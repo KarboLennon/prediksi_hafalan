@@ -1,0 +1,46 @@
+|--- kecepatan_avg_sebelumnya <= 4.14
+|   |--- rata_kata_per_ayat <= 4.66
+|   |   |--- hari_ke <= 1.50
+|   |   |   |--- kecepatan_avg_sebelumnya <= 3.04
+|   |   |   |   |--- truncated branch of depth 2
+|   |   |   |--- kecepatan_avg_sebelumnya >  3.04
+|   |   |   |   |--- value: [9.20]
+|   |   |--- hari_ke >  1.50
+|   |   |   |--- progress_persen <= 88.50
+|   |   |   |   |--- truncated branch of depth 5
+|   |   |   |--- progress_persen >  88.50
+|   |   |   |   |--- value: [1.89]
+|   |--- rata_kata_per_ayat >  4.66
+|   |   |--- kecepatan_avg_sebelumnya <= 2.18
+|   |   |   |--- hari_ke <= 13.50
+|   |   |   |   |--- truncated branch of depth 5
+|   |   |   |--- hari_ke >  13.50
+|   |   |   |   |--- truncated branch of depth 5
+|   |   |--- kecepatan_avg_sebelumnya >  2.18
+|   |   |   |--- std_kata_per_ayat <= 4.60
+|   |   |   |   |--- truncated branch of depth 5
+|   |   |   |--- std_kata_per_ayat >  4.60
+|   |   |   |   |--- value: [4.00]
+|--- kecepatan_avg_sebelumnya >  4.14
+|   |--- rata_kata_per_ayat <= 5.24
+|   |   |--- kecepatan_avg_sebelumnya <= 8.06
+|   |   |   |--- total_ayat_surah <= 23.50
+|   |   |   |   |--- truncated branch of depth 4
+|   |   |   |--- total_ayat_surah >  23.50
+|   |   |   |   |--- truncated branch of depth 5
+|   |   |--- kecepatan_avg_sebelumnya >  8.06
+|   |   |   |--- total_ayat_surah <= 38.00
+|   |   |   |   |--- truncated branch of depth 2
+|   |   |   |--- total_ayat_surah >  38.00
+|   |   |   |   |--- truncated branch of depth 3
+|   |--- rata_kata_per_ayat >  5.24
+|   |   |--- total_ayat_surah <= 18.00
+|   |   |   |--- kecepatan_avg_sebelumnya <= 5.79
+|   |   |   |   |--- value: [2.20]
+|   |   |   |--- kecepatan_avg_sebelumnya >  5.79
+|   |   |   |   |--- value: [4.20]
+|   |   |--- total_ayat_surah >  18.00
+|   |   |   |--- ayat_sudah_dihafal <= 30.00
+|   |   |   |   |--- truncated branch of depth 5
+|   |   |   |--- ayat_sudah_dihafal >  30.00
+|   |   |   |   |--- truncated branch of depth 3

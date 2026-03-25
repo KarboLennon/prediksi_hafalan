@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pandas
+scikit-learn
+joblib
+numpy
+requests
+beautifulsoup4
+matplotlib
+seaborn
+jinja2
+python-multipart
+pymysql

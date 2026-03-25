@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Guru Dashboard{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Dashboard Guru</h3>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card p-4">
+            <h5 class="mb-3">Input Hafalan Siswa</h5>
+            <form method="POST" action="/guru/input-hafalan" id="formHafalan">
+                <div class="mb-3">
+                    <label class="form-label">Siswa</label>
+                    <input type="text" id="siswaSearch" class="form-control mb-1" placeholder="Ketik nama siswa...">
+                    <select name="siswa_id" id="siswaSelect" class="form-select" required>
+                        <option value="">-- Pilih Siswa --</option>
+                        {% for s in daftar_siswa %}
+                        <option value="{{ s.id }}">{{ s.nama }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Surah</label>
+                    <select name="surah_id" id="surahSelect" class="form-select" required>
+                        <option value="">-- Pilih Surah --</option>
+                        {% for s in daftar_surah %}
+                        <option value="{{ s.id }}" data-ayat="{{ s.jumlah_ayat }}">
+                            {{ s.id }}. {{ s.nama }} ({{ s.jumlah_ayat }} ayat)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- ESTIMASI ML -->
+                <div id="prediksiBox" class="mb-3" style="display:none;">
+                    <div class="card border-success">
+                        <div class="card-body p-3" style="background: #f0faf5;">
+                            <div class="d-flex align-items-center mb-2">
+                                <strong class="ms-2 text-success">Estimasi AI (Decision Tree)</strong>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div style="font-size:1.5rem;font-weight:700;" id="predSisa">-</div>
+                                    <small class="text-muted">Sisa Ayat</small>
+                                </div>
+                                <div class="col-4">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#1a7a4c;" id="predSpeed">-</div>
+                                    <small class="text-muted">Prediksi/Hari</small>
+                                </div>
+                                <div class="col-4">
+                                    <div style="font-size:1.5rem;font-weight:700;color:#0d6efd;" id="predHari">-</div>
+                                    <small class="text-muted">Estimasi Hari</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <div class="progress" style="height:8px;">
+                                    <div class="progress-bar bg-success" id="predProgress" style="width:0%"></div>
+                                </div>
+                                <small class="text-muted" id="predDetail"></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col">
+                        <label class="form-label">Ayat Mulai</label>
+                        <input type="number" name="ayat_mulai" id="ayatMulai" class="form-control" min="1" required>
+                    </div>
+                    <div class="col">
+                        <label class="form-label">Ayat Selesai</label>
+                        <input type="number" name="ayat_selesai" id="ayatSelesai" class="form-control" min="1" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tanggal</label>
+                    <input type="date" name="tanggal" class="form-control" value="{{ today }}" required>
+                </div>
+                <button type="submit" class="btn btn-success w-100">Simpan Hafalan</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card p-4">
+            <h5 class="mb-3">Log Hafalan Terbaru</h5>
+            {% if logs %}
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Siswa</th>
+                        <th>Surah</th>
+                        <th>Ayat</th>
+                        <th>Jml</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.tanggal }}</td>
+                        <td>{{ log.nama_siswa }}</td>
+                        <td>{{ log.nama_surah }}</td>
+                        <td>{{ log.ayat_mulai }} - {{ log.ayat_selesai }}</td>
+                        <td><span class="badge bg-success">{{ log.jumlah_ayat }} ayat</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">Belum ada data hafalan.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const siswaSelect = document.getElementById('siswaSelect');
+const siswaSearch = document.getElementById('siswaSearch');
+const surahSelect = document.getElementById('surahSelect');
+const ayatMulai = document.getElementById('ayatMulai');
+const ayatSelesai = document.getElementById('ayatSelesai');
+const prediksiBox = document.getElementById('prediksiBox');
+
+// ============================
+// 1. SEARCH SISWA — filter dropdown by keyword
+// ============================
+const allSiswaOptions = [...siswaSelect.options].map(opt => ({
+    value: opt.value,
+    text: opt.textContent.trim(),
+}));
+
+siswaSearch.addEventListener('input', function() {
+    const keyword = this.value.toLowerCase();
+    siswaSelect.innerHTML = '';
+
+    allSiswaOptions.forEach(opt => {
+        if (opt.text.toLowerCase().includes(keyword) || opt.value === '') {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.text;
+            siswaSelect.appendChild(o);
+        }
+    });
+
+    // Auto-select kalau tinggal 1 hasil (selain placeholder)
+    const realOptions = [...siswaSelect.options].filter(o => o.value !== '');
+    if (realOptions.length === 1) {
+        siswaSelect.value = realOptions[0].value;
+        siswaSelect.dispatchEvent(new Event('change'));
+    }
+});
+
+// ============================
+// 2. AUTO-FILL AYAT MULAI — ambil dari hafalan terakhir
+// ============================
+function fetchLastAyat() {
+    const siswaId = siswaSelect.value;
+    const surahId = surahSelect.value;
+
+    if (!siswaId || !surahId) return;
+
+    fetch(`/api/last-ayat?siswa_id=${siswaId}&surah_id=${surahId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+
+            const max = data.total_ayat;
+            ayatMulai.max = max;
+            ayatSelesai.max = max;
+
+            if (data.selesai) {
+                ayatMulai.value = '';
+                ayatSelesai.value = '';
+                alert(`Siswa ini sudah selesai menghafal surah ini (${max} ayat)`);
+            } else {
+                ayatMulai.value = data.next_ayat;
+                ayatSelesai.value = '';
+                ayatSelesai.focus();
+            }
+        })
+        .catch(() => {});
+}
+
+// ============================
+// 3. PREDIKSI ML
+// ============================
+function fetchPrediksi() {
+    const siswaId = siswaSelect.value;
+    const surahId = surahSelect.value;
+
+    if (!siswaId || !surahId) {
+        prediksiBox.style.display = 'none';
+        return;
+    }
+
+    fetch(`/api/prediksi?siswa_id=${siswaId}&surah_id=${surahId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                prediksiBox.style.display = 'none';
+                return;
+            }
+            document.getElementById('predSisa').textContent = data.sisa_ayat;
+            document.getElementById('predSpeed').textContent = data.prediksi_ayat_per_hari + ' ayat';
+            document.getElementById('predHari').textContent = data.sisa_ayat === 0 ? 'Selesai!' : '±' + data.estimasi_hari + ' hari';
+            document.getElementById('predProgress').style.width = data.progress_persen + '%';
+            document.getElementById('predDetail').textContent =
+                `Progress: ${data.ayat_sudah}/${data.total_ayat} ayat (${data.progress_persen}%) · Kecepatan avg: ${data.kecepatan_avg} ayat/hari`;
+            prediksiBox.style.display = 'block';
+        })
+        .catch(() => { prediksiBox.style.display = 'none'; });
+}
+
+// ============================
+// EVENT LISTENERS
+// ============================
+siswaSelect.addEventListener('change', function() {
+    fetchLastAyat();
+    fetchPrediksi();
+});
+
+surahSelect.addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const max = opt.dataset.ayat || 1;
+    ayatMulai.max = max;
+    ayatSelesai.max = max;
+    ayatMulai.value = '';
+    ayatSelesai.value = '';
+    fetchLastAyat();
+    fetchPrediksi();
+});
+
+document.getElementById('formHafalan').addEventListener('submit', function(e) {
+    const mulai = parseInt(ayatMulai.value);
+    const selesai = parseInt(ayatSelesai.value);
+    if (selesai < mulai) {
+        e.preventDefault();
+        alert('Ayat selesai harus >= ayat mulai');
+    }
+});
+</script>
+{% endblock %}
