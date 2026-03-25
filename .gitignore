@@ -1,0 +1,5 @@
+app/__pycache__
+docs
+models
+node_modules
+venv
