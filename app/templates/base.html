@@ -7,41 +7,590 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background: #f5f7fa; }
-        .navbar { background: linear-gradient(135deg, #1a7a4c, #2d9b6e) !important; }
-        .card { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .badge-admin { background: #dc3545; }
-        .badge-guru { background: #0d6efd; }
-        .badge-siswa { background: #198754; }
-        .stat-card { text-align: center; padding: 1.5rem; }
-        .stat-card h2 { font-size: 2rem; font-weight: 700; margin: 0; }
-        .stat-card small { color: #6c757d; }
+    /* =============================================
+       DESIGN SYSTEM — Hafalan Al-Qur'an Monitor
+       Primary    : #1B4332
+       Background : #F1FAF7
+       Accent     : #FFC107
+       Neutral    : #6C757D
+    ============================================= */
+    :root {
+        --c-primary   : #1B4332;
+        --c-bg        : #F1FAF7;
+        --c-accent    : #FFC107;
+        --c-neutral   : #6C757D;
+        --c-white     : #ffffff;
+        --c-border    : #e2e8f0;
+        --c-hover-row : #f6fdf9;
+        --radius      : 12px;
+        --radius-sm   : 8px;
+        --shadow      : 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+        --shadow-sm   : 0 1px 3px rgba(0,0,0,0.08);
+        --font        : 'SF Pro Text','SF Pro Icons','Helvetica Neue',Helvetica,Arial,sans-serif;
+    }
+
+    /* ---- Reset & Base ---- */
+    *, *::before, *::after { box-sizing: border-box; }
+    * { font-family: var(--font); }
+    body {
+        background-color: var(--c-bg);
+        color: var(--c-primary);
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    /* ---- Typography ---- */
+    h1 { font-size: 24px; font-weight: 700; color: var(--c-primary); margin: 0 0 .25rem; }
+    h2 { font-size: 16px; font-weight: 600; color: var(--c-primary); margin: 0; }
+    h3 { font-size: 18px; font-weight: 700; color: var(--c-primary); margin: 0 0 1rem; }
+    h4, h5, h6 { font-weight: 600; color: var(--c-primary); }
+
+    /* ---- Navbar ---- */
+    .app-navbar {
+        position: sticky;
+        top: 0;
+        z-index: 1030;
+        background-color: var(--c-primary) !important;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: var(--shadow-sm);
+    }
+    .app-navbar .brand {
+        color: var(--c-white);
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: .3px;
+    }
+    .app-navbar .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .app-navbar .nav-user {
+        color: rgba(255,255,255,0.9);
+        font-size: 13px;
+        font-weight: 500;
+    }
+    .btn-hamburger {
+        background: none;
+        border: none;
+        color: var(--c-white);
+        font-size: 1.35rem;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        margin-right: 0.5rem;
+        line-height: 1;
+        opacity: 0.9;
+        transition: opacity .15s;
+    }
+    .btn-hamburger:hover { opacity: 1; }
+
+    /* ---- Sidebar ---- */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 1040;
+    }
+    .sidebar-overlay.active { display: block; }
+
+    .sidebar {
+        position: fixed;
+        top: 0; left: -280px;
+        width: 280px;
+        height: 100vh;
+        background: var(--c-white);
+        z-index: 1050;
+        transition: left .28s ease;
+        box-shadow: 3px 0 20px rgba(0,0,0,0.12);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    .sidebar.active { left: 0; }
+
+    .sidebar-head {
+        background-color: var(--c-primary);
+        padding: 1.5rem 1.25rem 1.25rem;
+        text-align: center;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .sidebar-head img {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        border-radius: 10px;
+        background: var(--c-white);
+        padding: 6px;
+        margin-bottom: 0.75rem;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .sidebar-head .s-name {
+        color: var(--c-white);
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: .1rem;
+    }
+    .sidebar-head .s-sub {
+        color: rgba(255,255,255,.75);
+        font-size: 12px;
+    }
+    .sidebar-close {
+        position: absolute;
+        top: 10px; right: 12px;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,.8);
+        font-size: 1.25rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+    }
+    .sidebar-close:hover { color: var(--c-white); }
+
+    .sidebar-divider {
+        height: 1px;
+        background: var(--c-border);
+        margin: 0.5rem 1.25rem;
+    }
+    .sidebar-section-label {
+        padding: 0.75rem 1.25rem 0.25rem;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--c-neutral);
+    }
+    .sidebar-nav {
+        list-style: none;
+        padding: 0.25rem 0;
+        margin: 0;
+        flex: 1;
+    }
+    .sidebar-nav li a {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.7rem 1.25rem;
+        color: #374151;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        border-left: 3px solid transparent;
+        transition: background .15s, color .15s, border-color .15s;
+    }
+    .sidebar-nav li a:hover {
+        background: var(--c-bg);
+        color: var(--c-primary);
+        border-left-color: var(--c-primary);
+    }
+    .sidebar-nav li a.active {
+        background: var(--c-bg);
+        color: var(--c-primary);
+        font-weight: 600;
+        border-left-color: var(--c-accent);
+    }
+    .sidebar-nav li a i {
+        width: 18px;
+        text-align: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    /* Desktop push */
+    @media (min-width: 992px) {
+        .sidebar-overlay { display: none !important; }
+    }
+
+    /* ---- Page wrapper ---- */
+    .main-content { min-height: 100vh; }
+    .page-wrap { padding: 20px 100px; margin: 0 auto; }
+
+    /* ---- Page header ---- */
+    .page-header { margin-bottom: 1.75rem;}
+    .page-header p { color: var(--c-neutral); font-size: 13px; margin: .25rem 0 0; }
+
+    /* ---- Cards ---- */
+    .app-card {
+        background: var(--c-white);
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .app-card-header {
+        padding: 1.1rem 1.5rem;
+        border-bottom: 1px solid var(--c-border);
+    }
+    .app-card-header.dark {
+        background-color: var(--c-primary);
+        border-bottom: none;
+    }
+    .app-card-header.dark h2,
+    .app-card-header.dark p { color: var(--c-white); }
+    .app-card-header.dark p { opacity: .85; font-size: 13px; margin-top: .15rem; }
+    .app-card-header.accent {
+        background-color: var(--c-accent);
+        border-bottom: none;
+    }
+    .app-card-header.accent h2 { color: var(--c-primary); }
+    .app-card-header.accent p { color: var(--c-primary); opacity: .75; font-size: 13px; margin-top: .15rem; }
+    .app-card-header.light {
+        background-color: var(--c-bg);
+        border-bottom: 1px solid var(--c-border);
+    }
+    .app-card-body { padding: 1.5rem; }
+    .app-card-body.p-compact { padding: 1rem 1.5rem; }
+    .app-card-body.p-none { padding: 0; }
+
+    /* ---- Stat cards ---- */
+    .stat-card { text-align: center; padding: 1.5rem 1rem; }
+    .stat-icon {
+        width: 52px; height: 52px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 0.875rem;
+        flex-shrink: 0;
+    }
+    .stat-icon.dark { background-color: var(--c-primary); }
+    .stat-icon.accent { background-color: var(--c-accent); }
+    .stat-icon i { font-size: 1.25rem; }
+    .stat-icon.dark i { color: var(--c-white); }
+    .stat-icon.accent i { color: var(--c-primary); }
+    .stat-val { font-size: 28px; font-weight: 700; color: var(--c-primary); line-height: 1; margin-bottom: .4rem; }
+    .stat-label { font-size: 13px; color: var(--c-neutral); margin: 0; }
+
+    /* ---- Buttons ---- */
+    .btn-primary-app {
+        display: inline-flex; align-items: center; gap: .4rem;
+        background-color: var(--c-accent);
+        color: var(--c-primary);
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: .6rem 1.25rem;
+        cursor: pointer;
+        transition: opacity .15s;
+        text-decoration: none;
+    }
+    .btn-primary-app:hover { opacity: .85; color: var(--c-primary); }
+
+    .btn-dark-app {
+        display: inline-flex; align-items: center; gap: .4rem;
+        background-color: var(--c-primary);
+        color: var(--c-white);
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: .6rem 1.25rem;
+        cursor: pointer;
+        transition: opacity .15s;
+        text-decoration: none;
+    }
+    .btn-dark-app:hover { opacity: .85; color: var(--c-white); }
+
+    .btn-outline-app {
+        display: inline-flex; align-items: center; gap: .4rem;
+        background: transparent;
+        color: var(--c-primary);
+        border: 1.5px solid var(--c-primary);
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 14px;
+        padding: .55rem 1.25rem;
+        cursor: pointer;
+        transition: background .15s, color .15s;
+        text-decoration: none;
+    }
+    .btn-outline-app:hover { background: var(--c-primary); color: var(--c-white); }
+
+    .btn-ghost-app {
+        display: inline-flex; align-items: center; gap: .35rem;
+        background: transparent;
+        color: var(--c-white);
+        border: 1.5px solid rgba(255,255,255,.5);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        font-weight: 500;
+        padding: .4rem .875rem;
+        cursor: pointer;
+        transition: border-color .15s, background .15s;
+        text-decoration: none;
+    }
+    .btn-ghost-app:hover { border-color: var(--c-white); background: rgba(255,255,255,.1); color: var(--c-white); }
+
+    /* icon-only action buttons */
+    .btn-act {
+        width: 32px; height: 32px;
+        border: none; border-radius: 8px;
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 13px;
+        transition: opacity .15s;
+    }
+    .btn-act:hover { opacity: .8; }
+    .btn-act.warn  { background-color: var(--c-accent); color: var(--c-primary); }
+    .btn-act.danger { background-color: #ef4444; color: var(--c-white); }
+    .btn-act.info  { background-color: var(--c-primary); color: var(--c-white); }
+
+    /* Bootstrap button overrides */
+    .btn-success { background-color: var(--c-primary); border-color: var(--c-primary); font-weight: 600; }
+    .btn-success:hover { background-color: #163d2b; border-color: #163d2b; }
+    .btn-warning { background-color: var(--c-accent); border-color: var(--c-accent); color: var(--c-primary); font-weight: 600; }
+    .btn-warning:hover { background-color: #e6ad06; border-color: #e6ad06; color: var(--c-primary); }
+    .btn-outline-secondary { border-color: var(--c-border); color: var(--c-neutral); font-weight: 500; }
+    .btn-outline-secondary:hover { background: var(--c-bg); color: var(--c-primary); border-color: var(--c-border); }
+    .btn-outline-light { border-color: rgba(255,255,255,.5); color: var(--c-white); font-size: 13px; font-weight: 500; }
+    .btn-outline-light:hover { background: rgba(255,255,255,.1); color: var(--c-white); }
+
+    /* ---- Form controls ---- */
+    .form-control, .form-select, textarea.form-control {
+        border: 1px solid var(--c-border);
+        border-radius: var(--radius-sm);
+        color: var(--c-primary);
+        font-size: 14px;
+        padding: .6rem .875rem;
+        background-color: var(--c-white);
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .form-control:focus, .form-select:focus, textarea.form-control:focus {
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 3px rgba(27,67,50,.1);
+        outline: none;
+    }
+    .form-control.bg-light, .bg-light {
+        background-color: var(--c-bg) !important;
+        border-color: var(--c-border) !important;
+        color: var(--c-primary);
+    }
+    .form-label { font-weight: 500; color: var(--c-primary); font-size: 13px; margin-bottom: .375rem; }
+    .form-text, .form-hint { font-size: 12px; color: var(--c-neutral); margin-top: .25rem; }
+    .input-group-text {
+        background-color: var(--c-bg);
+        border-color: var(--c-border);
+        color: var(--c-neutral);
+        font-size: 14px;
+    }
+
+    /* ---- Tables ---- */
+    .app-table { width: 100%; border-collapse: collapse; }
+    .app-table thead tr { background-color: var(--c-bg); }
+    .app-table thead th {
+        color: var(--c-neutral);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        padding: .7rem 1rem;
+        border-bottom: 1px solid var(--c-border);
+        white-space: nowrap;
+    }
+    .app-table tbody td {
+        padding: .8rem 1rem;
+        color: var(--c-primary);
+        font-size: 13.5px;
+        border-bottom: 1px solid var(--c-border);
+        vertical-align: middle;
+    }
+    .app-table tbody tr:last-child td { border-bottom: none; }
+    .app-table tbody tr:hover { background-color: var(--c-hover-row); }
+
+    /* ---- Badges ---- */
+    .tag {
+        display: inline-block;
+        padding: .2rem .55rem;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+    .tag.dark    { background-color: var(--c-primary); color: var(--c-white); }
+    .tag.accent  { background-color: var(--c-accent); color: var(--c-primary); }
+    .tag.neutral { background-color: var(--c-neutral); color: var(--c-white); }
+    .tag.success { background-color: #166534; color: var(--c-white); }
+    .tag.danger  { background-color: #ef4444; color: var(--c-white); }
+    .tag.light   { background-color: var(--c-bg); color: var(--c-primary); border: 1px solid var(--c-border); }
+
+    /* ---- Alert ---- */
+    .app-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        padding: .875rem 1rem;
+        border-radius: var(--radius-sm);
+        font-size: 13.5px;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    .app-alert .alert-close {
+        position: absolute;
+        top: .5rem; right: .75rem;
+        background: none; border: none;
+        font-size: 1.1rem; cursor: pointer;
+        opacity: .6; line-height: 1;
+    }
+    .app-alert .alert-close:hover { opacity: 1; }
+    .app-alert.success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+    .app-alert.danger  { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+    .app-alert.warning { background: #fffbeb; border: 1px solid var(--c-accent); color: #92400e; }
+    .app-alert.info    { background: var(--c-bg); border: 1px solid #a7f3d0; color: var(--c-primary); }
+
+    /* ---- Pagination ---- */
+    .pagination .page-link {
+        color: var(--c-primary);
+        border-color: var(--c-border);
+        font-size: 13px;
+        padding: .375rem .65rem;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: var(--c-primary);
+        border-color: var(--c-primary);
+        color: var(--c-white);
+    }
+    .pagination .page-link:hover { background-color: var(--c-bg); color: var(--c-primary); }
+    .pagination .page-item.disabled .page-link { color: var(--c-neutral); }
+
+    /* ---- Misc ---- */
+    .text-primary-app { color: var(--c-primary) !important; }
+    .text-accent-app  { color: var(--c-accent) !important; }
+    .text-muted       { color: var(--c-neutral) !important; font-size: 13px; }
+    .divider          { height: 1px; background: var(--c-border); margin: 1rem 0; }
+    .section-label    {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: var(--c-neutral);
+        margin-bottom: .75rem;
+    }
+    .empty-state { text-align: center; padding: 2.5rem 1rem; }
+    .empty-state .empty-icon { font-size: 2.5rem; opacity: .25; margin-bottom: .75rem; }
+    .empty-state p { color: var(--c-neutral); font-size: 13px; margin: .25rem 0 0; }
+
+    /* ---- Progress bar ---- */
+    .progress { height: 8px; border-radius: 99px; background: var(--c-bg); }
+    .progress-bar { background-color: var(--c-primary); border-radius: 99px; }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+        .page-wrap { padding: 1.25rem 1rem; }
+        h1 { font-size: 20px; }
+        .app-card-body { padding: 1.25rem; }
+        .app-table thead th, .app-table tbody td { padding: .6rem .75rem; font-size: 13px; }
+    }
+    @media (max-width: 576px) {
+        .page-wrap { padding: 1rem .75rem; }
+        .stat-val { font-size: 24px; }
+    }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     {% if user %}
-    <nav class="navbar navbar-dark px-3">
-        <span class="navbar-brand mb-0 h1">Hafalan Monitoring</span>
-        <div class="d-flex align-items-center gap-3">
-            <span class="text-white">{{ user.nama }}</span>
-            <span class="badge badge-{{ user.role }}">{{ user.role }}</span>
-            <a href="/logout" class="btn btn-outline-light btn-sm">Logout</a>
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-head">
+            <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Tutup sidebar">&times;</button>
+            <img src="/static/gambar/jamiyah.png" alt="Logo Jamiyah" onerror="this.style.display='none'">
+            <div class="s-name">Hafalan Al-Qur'an</div>
+            <div class="s-sub">{{ user.nama }}</div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <ul class="sidebar-nav">
+            {% if user.role == 'guru' %}
+            <li><a href="/guru" class="{% if active_page == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> Dashboard
+            </a></li>
+            <li><a href="/guru/input-hafalan" class="{% if active_page == 'input_hafalan' %}active{% endif %}">
+                <i class="fas fa-pen-to-square"></i> Input Hafalan
+            </a></li>
+            <li><a href="/guru/data-pribadi" class="{% if active_page == 'data_pribadi' %}active{% endif %}">
+                <i class="fas fa-user-circle"></i> Data Pribadi
+            </a></li>
+            <li><a href="/guru/ubah-password" class="{% if active_page == 'ubah_password' %}active{% endif %}">
+                <i class="fas fa-lock"></i> Ubah Password
+            </a></li>
+            {% elif user.role == 'siswa' %}
+            <li><a href="/siswa" class="{% if active_page == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> Dashboard
+            </a></li>
+            <li><a href="/siswa/data-pribadi" class="{% if active_page == 'data_pribadi' %}active{% endif %}">
+                <i class="fas fa-user-circle"></i> Data Pribadi
+            </a></li>
+            <li><a href="/siswa/ubah-password" class="{% if active_page == 'ubah_password' %}active{% endif %}">
+                <i class="fas fa-lock"></i> Ubah Password
+            </a></li>
+            {% elif user.role == 'admin' %}
+            <li><a href="/admin" class="{% if active_page == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-shield-halved"></i> Dashboard
+            </a></li>
+            {% endif %}
+        </ul>
+
+        <div class="sidebar-divider"></div>
+        <ul class="sidebar-nav" style="padding-bottom: 1.5rem;">
+            <li>
+                <a href="/logout">
+                    <i class="fas fa-right-from-bracket"></i> Keluar
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="app-navbar">
+        <div style="display:flex; align-items:center;">
+            <button class="btn-hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+            <span class="brand">Hafalan Al-Qur'an</span>
+        </div>
+        <div class="nav-right">
+            <span class="nav-user d-none d-sm-block">{{ user.nama }}</span>
+            <span class="tag {% if user.role == 'admin' %}danger{% elif user.role == 'guru' %}dark{% else %}accent{% endif %}">
+                {{ user.role }}
+            </span>
+            <a href="/logout" class="btn-ghost-app">
+                <i class="fas fa-right-from-bracket"></i>
+                <span class="d-none d-md-inline">Logout</span>
+            </a>
         </div>
     </nav>
     {% endif %}
 
-    <div class="container py-4">
-        {% if alert %}
-        <div class="alert alert-{{ alert.type }} alert-dismissible fade show">
-            {{ alert.message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% endif %}
+    <div class="main-content">
+        <div class="page-wrap">
+            {% if alert %}
+            <div class="app-alert {{ alert.type if alert.type in ['success','danger','warning','info'] else 'info' }}">
+                <i class="fas {% if alert.type == 'success' %}fa-circle-check{% elif alert.type == 'danger' %}fa-circle-xmark{% elif alert.type == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+                <span>{{ alert.message }}</span>
+                <button class="alert-close" onclick="this.closest('.app-alert').remove()">&times;</button>
+            </div>
+            {% endif %}
 
-        {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('sidebarOverlay').classList.toggle('active');
+        document.body.classList.toggle('sidebar-open');
+    }
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

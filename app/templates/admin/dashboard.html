@@ -2,91 +2,210 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-<h3 class="mb-4">Admin Dashboard</h3>
+<!-- Page Header -->
+<div class="page-header">
+    <h1>Admin Dashboard</h1>
+    <p>Kelola pengguna dan pantau sistem hafalan</p>
+</div>
 
-<div class="row mb-4">
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card stat-card">
-            <h2>{{ total_guru }}</h2>
-            <small>Total Guru</small>
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon dark"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="stat-val">{{ total_guru }}</div>
+                <p class="stat-label">Total Guru</p>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card stat-card">
-            <h2>{{ total_siswa }}</h2>
-            <small>Total Siswa</small>
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon dark"><i class="fas fa-user-graduate"></i></div>
+                <div class="stat-val">{{ total_siswa }}</div>
+                <p class="stat-label">Total Siswa</p>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card stat-card">
-            <h2>{{ total_hafalan }}</h2>
-            <small>Total Log Hafalan</small>
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon accent"><i class="fas fa-book-open"></i></div>
+                <div class="stat-val">{{ total_hafalan }}</div>
+                <p class="stat-label">Total Log Hafalan</p>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-5">
-        <div class="card p-4">
-            <h5 class="mb-3">Tambah User</h5>
-            <form method="POST" action="/admin/tambah-user">
-                <div class="mb-3">
-                    <label class="form-label">Nama</label>
-                    <input type="text" name="nama" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Role</label>
-                    <select name="role" class="form-select" required>
-                        <option value="guru">Guru</option>
-                        <option value="siswa">Siswa</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-success w-100">Tambah</button>
-            </form>
+<!-- Main Content -->
+<div class="row g-4" style="padding: 0px 65px;">
+    <!-- Form Tambah User -->
+    <div class="col-xl-5 col-lg-5">
+        <div class="app-card">
+            <div class="app-card-header dark">
+                <h2>Tambah User Baru</h2>
+                <p>Daftarkan guru atau siswa baru</p>
+            </div>
+            <div class="app-card-body">
+                <form method="POST" action="/admin/tambah-user" id="formTambah">
+                    <div style="margin-bottom:1.1rem;">
+                        <label class="form-label">Role Pengguna</label>
+                        <select name="role" id="roleSelect" class="form-select" required>
+                            <option value="siswa">Siswa</option>
+                            <option value="guru">Guru</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:1.1rem;">
+                        <label class="form-label">Nama Lengkap</label>
+                        <input type="text" name="nama" class="form-control"
+                               placeholder="Masukkan nama lengkap" required>
+                    </div>
+
+                    <div id="nisnGroup" style="margin-bottom:1.1rem;">
+                        <label class="form-label">NISN</label>
+                        <input type="text" name="nisn" id="nisnInput" class="form-control"
+                               placeholder="10 digit NISN" maxlength="20">
+                        <p class="form-hint">Password default = NISN</p>
+                    </div>
+
+                    <div id="nuptkGroup" style="margin-bottom:1.1rem; display:none;">
+                        <label class="form-label">NUPTK</label>
+                        <input type="text" name="nuptk" id="nuptkInput" class="form-control"
+                               placeholder="16 digit NUPTK" maxlength="20">
+                        <p class="form-hint">Password default = NUPTK</p>
+                    </div>
+
+                    <div style="margin-bottom:1.25rem;">
+                        <label class="form-label">
+                            Email <span class="text-muted" style="font-weight:400;">(opsional)</span>
+                        </label>
+                        <input type="email" name="email" class="form-control"
+                               placeholder="email@contoh.com">
+                    </div>
+
+                    <div class="app-alert info" style="margin-bottom:1.25rem;">
+                        <i class="fas fa-circle-info"></i>
+                        <span>Password otomatis = <strong id="pwInfo">NISN</strong>. User wajib ganti saat login pertama.</span>
+                    </div>
+
+                    <button type="submit" class="btn-primary-app w-100" style="justify-content:center; padding:.65rem;">
+                        <i class="fas fa-user-plus"></i> Tambah User
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div class="col-md-7">
-        <div class="card p-4">
-            <h5 class="mb-3">Daftar User</h5>
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Nama</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in users %}
-                    <tr>
-                        <td>{{ u.id }}</td>
-                        <td>{{ u.nama }}</td>
-                        <td>{{ u.email }}</td>
-                        <td><span class="badge badge-{{ u.role }}">{{ u.role }}</span></td>
-                        <td>
-                            {% if u.role != 'admin' %}
-                            <form method="POST" action="/admin/hapus-user/{{ u.id }}" style="display:inline"
-                                  onsubmit="return confirm('Hapus user {{ u.nama }}?')">
-                                <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
-                            </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Daftar User -->
+    <div class="col-xl-7 col-lg-7">
+        <div class="app-card">
+            <div class="app-card-header dark">
+                <h2>Daftar Pengguna</h2>
+                <p>Kelola semua akun dalam sistem</p>
+            </div>
+            <div class="app-card-body p-none">
+                <div class="table-responsive">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nama</th>
+                                <th>ID / Akun</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td style="color:var(--c-neutral);">{{ u.id }}</td>
+                                <td>
+                                    <div style="font-weight:600;">{{ u.nama }}</div>
+                                    {% if u.email %}
+                                    <div style="font-size:12px; color:var(--c-neutral);">{{ u.email }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if u.nisn %}
+                                    <span class="tag light">NISN: {{ u.nisn }}</span>
+                                    {% elif u.nuptk %}
+                                    <span class="tag light">NUPTK: {{ u.nuptk }}</span>
+                                    {% else %}
+                                    <span style="color:var(--c-neutral);">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="tag {% if u.role == 'admin' %}danger{% elif u.role == 'guru' %}dark{% else %}accent{% endif %}">
+                                        {{ u.role }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if u.must_change_password %}
+                                    <span class="tag accent">Belum ganti PW</span>
+                                    {% else %}
+                                    <span class="tag success">Aktif</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if u.role != 'admin' %}
+                                    <div style="display:flex; gap:.375rem;">
+                                        <form method="POST" action="/admin/reset-password/{{ u.id }}"
+                                              onsubmit="return confirm('Reset password {{ u.nama }}?')" style="display:inline;">
+                                            <button type="submit" class="btn-act warn" title="Reset Password">
+                                                <i class="fas fa-key"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="/admin/hapus-user/{{ u.id }}"
+                                              onsubmit="return confirm('Hapus user {{ u.nama }}?')" style="display:inline;">
+                                            <button type="submit" class="btn-act danger" title="Hapus User">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const roleSelect  = document.getElementById('roleSelect');
+const nisnGroup   = document.getElementById('nisnGroup');
+const nuptkGroup  = document.getElementById('nuptkGroup');
+const nisnInput   = document.getElementById('nisnInput');
+const nuptkInput  = document.getElementById('nuptkInput');
+const pwInfo      = document.getElementById('pwInfo');
+
+function toggleFields() {
+    if (roleSelect.value === 'siswa') {
+        nisnGroup.style.display  = 'block';
+        nuptkGroup.style.display = 'none';
+        nisnInput.required  = true;
+        nuptkInput.required = false;
+        nuptkInput.value    = '';
+        pwInfo.textContent  = 'NISN';
+    } else {
+        nisnGroup.style.display  = 'none';
+        nuptkGroup.style.display = 'block';
+        nisnInput.required  = false;
+        nuptkInput.required = true;
+        nisnInput.value     = '';
+        pwInfo.textContent  = 'NUPTK';
+    }
+}
+roleSelect.addEventListener('change', toggleFields);
+toggleFields();
+</script>
 {% endblock %}

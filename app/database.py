@@ -110,6 +110,19 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
 
+def find_user_by_identifier(identifier: str):
+    """Cari user berdasarkan email, NISN, atau NUPTK."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM users WHERE email = %s OR nisn = %s OR nuptk = %s",
+        (identifier, identifier, identifier)
+    )
+    user = cur.fetchone()
+    conn.close()
+    return user
+
+
 def init_db():
     """Load CSV + cek koneksi MySQL."""
     # Load data Quran dari CSV

@@ -2,616 +2,361 @@
 {% block title %}Dashboard Siswa{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">Dashboard Hafalan</h3>
-        <div class="text-muted">
-            <i class="fas fa-user"></i> {{ user.nama }}
-        </div>
-    </div>
+<div class="page-header">
+    <h1>Dashboard Hafalan</h1>
+    <p>Pantau progress dan riwayat hafalan Al-Qur'an Anda</p>
+</div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="d-flex align-items-center justify-content-center mb-2">
-                        <i class="fas fa-book-open text-primary me-2" style="font-size: 1.5rem;"></i>
-                        <h2 class="mb-0 text-primary">{{ total_ayat_dihafal }}</h2>
-                    </div>
-                    <small class="text-muted">Total Ayat Dihafal</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="d-flex align-items-center justify-content-center mb-2">
-                        <i class="fas fa-list text-success me-2" style="font-size: 1.5rem;"></i>
-                        <h2 class="mb-0 text-success">{{ total_surah_aktif }}</h2>
-                    </div>
-                    <small class="text-muted">Surah Aktif</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card stat-card border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="d-flex align-items-center justify-content-center mb-2">
-                        <i class="fas fa-calendar-alt text-warning me-2" style="font-size: 1.5rem;"></i>
-                        <h2 class="mb-0 text-warning">{{ total_hari }}</h2>
-                    </div>
-                    <small class="text-muted">Hari Aktif</small>
-                </div>
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon dark"><i class="fas fa-book-open"></i></div>
+                <div class="stat-val">{{ total_ayat_dihafal }}</div>
+                <p class="stat-label">Total Ayat Dihafal</p>
             </div>
         </div>
     </div>
-
-    <!-- AI Estimation Section -->
-    {% if prediksi_list or ai_filter_surah %}
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white border-0 py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <span style="font-size:1.5rem;">🤖</span>
-                    <h5 class="mb-0 ms-2 fw-bold">
-                        <i class="fas fa-brain text-success me-2"></i>
-                        Estimasi AI (Decision Tree)
-                    </h5>
-                </div>
-                <div class="d-flex align-items-center">
-                    <small class="text-muted me-3">
-                        Menampilkan {{ prediksi_list|length }} dari {{ ai_total_records }} prediksi
-                    </small>
-                </div>
-            </div>
-        </div>
-        
-        <!-- AI Filter Section -->
-        <div class="card-body border-bottom">
-            <form method="GET" class="row g-3 align-items-end">
-                <!-- Preserve riwayat pagination and filter -->
-                {% if current_page > 1 %}
-                <input type="hidden" name="page" value="{{ current_page }}">
-                {% endif %}
-                {% if filter_surah %}
-                <input type="hidden" name="filter_surah" value="{{ filter_surah }}">
-                {% endif %}
-                
-                <div class="col-md-4">
-                    <label for="ai_filter_surah" class="form-label fw-semibold">Filter Surah untuk Prediksi AI</label>
-                    <select name="ai_filter_surah" id="ai_filter_surah" class="form-select">
-                        <option value="">-- Semua Surah --</option>
-                        {% for surah in ai_surah_options %}
-                        <option value="{{ surah }}" {% if ai_filter_surah == surah %}selected{% endif %}>
-                            {{ surah }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="fas fa-filter me-1"></i> Filter AI
-                    </button>
-                </div>
-                {% if ai_filter_surah %}
-                <div class="col-md-2">
-                    <a href="?{% if current_page > 1 %}page={{ current_page }}&{% endif %}{% if filter_surah %}filter_surah={{ filter_surah }}{% endif %}" class="btn btn-outline-secondary w-100">
-                        <i class="fas fa-times me-1"></i> Reset AI
-                    </a>
-                </div>
-                {% endif %}
-            </form>
-        </div>
-
-        <div class="card-body">
-            {% if prediksi_list %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="fw-bold">Surah</th>
-                            <th class="fw-bold text-center">Progress</th>
-                            <th class="fw-bold text-center">Ayat</th>
-                            <th class="fw-bold text-center">Estimasi Selesai</th>
-                            <th class="fw-bold text-center">Prediksi/Hari</th>
-                            <th class="fw-bold text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for pred in prediksi_list %}
-                        <tr>
-                            <td class="fw-semibold">{{ pred.nama_surah }}</td>
-                            <td class="text-center" style="width: 200px;">
-                                <div class="progress" style="height: 24px;">
-                                    <div class="progress-bar bg-success progress-bar-striped" 
-                                         data-width="{{ pred.progress_persen }}" 
-                                         style="width: 0%;">
-                                        {{ pred.progress_persen }}%
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                <span class="text-muted">{{ pred.ayat_sudah }}/{{ pred.total_ayat }}</span>
-                            </td>
-                            <td class="text-center">
-                                {% if pred.sisa_ayat > 0 %}
-                                <div class="d-flex flex-column align-items-center">
-                                    <span class="badge bg-primary fs-6 mb-1">±{{ pred.estimasi_hari }} hari</span>
-                                    <small class="text-muted">{{ pred.sisa_ayat }} sisa ayat</small>
-                                </div>
-                                {% else %}
-                                <span class="badge bg-success fs-6">Selesai</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if pred.sisa_ayat > 0 %}
-                                <span class="badge bg-info">~{{ pred.prediksi_ayat_per_hari }} ayat/hari</span>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if pred.sisa_ayat > 0 %}
-                                <i class="fas fa-clock text-warning" title="Dalam Progress"></i>
-                                <small class="text-muted d-block">Dalam Progress</small>
-                                {% else %}
-                                <i class="fas fa-check-circle text-success" title="Selesai"></i>
-                                <small class="text-success d-block">Selesai</small>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- AI Pagination -->
-            {% if ai_total_pages > 1 %}
-            <nav aria-label="AI Pagination" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if ai_has_prev %}
-                    <li class="page-item">
-                        <a class="page-link" href="?ai_page={{ ai_prev_page }}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}{% if current_page > 1 %}&page={{ current_page }}{% endif %}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}">
-                            <i class="fas fa-chevron-left"></i> Sebelumnya
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">
-                            <i class="fas fa-chevron-left"></i> Sebelumnya
-                        </span>
-                    </li>
-                    {% endif %}
-
-                    {% for page_num in range(1, ai_total_pages + 1) %}
-                        {% if page_num == ai_current_page %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ page_num }}</span>
-                        </li>
-                        {% elif page_num <= 3 or page_num > ai_total_pages - 3 or (page_num >= ai_current_page - 1 and page_num <= ai_current_page + 1) %}
-                        <li class="page-item">
-                            <a class="page-link" href="?ai_page={{ page_num }}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}{% if current_page > 1 %}&page={{ current_page }}{% endif %}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}">
-                                {{ page_num }}
-                            </a>
-                        </li>
-                        {% elif page_num == 4 and ai_current_page > 5 %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {% elif page_num == ai_total_pages - 3 and ai_current_page < ai_total_pages - 4 %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if ai_has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?ai_page={{ ai_next_page }}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}{% if current_page > 1 %}&page={{ current_page }}{% endif %}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}">
-                            Selanjutnya <i class="fas fa-chevron-right"></i>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">
-                            Selanjutnya <i class="fas fa-chevron-right"></i>
-                        </span>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-
-            <!-- AI Pagination Info -->
-            <div class="text-center mt-3">
-                <small class="text-muted">
-                    Halaman {{ ai_current_page }} dari {{ ai_total_pages }} 
-                    ({{ ai_total_records }} total prediksi, {{ ai_per_page }} per halaman)
-                </small>
-            </div>
-            {% endif %}
-
-            {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-robot text-muted" style="font-size: 3rem;"></i>
-                <p class="text-muted mt-3 mb-0">
-                    {% if ai_filter_surah %}
-                    Tidak ada prediksi AI untuk surah "{{ ai_filter_surah }}".
-                    {% else %}
-                    Belum ada prediksi AI tersedia.
-                    {% endif %}
-                </p>
-                {% if ai_filter_surah %}
-                <a href="?{% if current_page > 1 %}page={{ current_page }}&{% endif %}{% if filter_surah %}filter_surah={{ filter_surah }}{% endif %}" class="btn btn-outline-success btn-sm mt-2">
-                    <i class="fas fa-times me-1"></i> Reset Filter AI
-                </a>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Progress Per Surah Section -->
-    {% if progress %}
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white border-0 py-3">
-            <h5 class="mb-0 fw-bold">
-                <i class="fas fa-chart-line text-primary me-2"></i>
-                Progress Per Surah
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="fw-bold">Surah</th>
-                            <th class="fw-bold text-center">Ayat Dihafal</th>
-                            <th class="fw-bold text-center">Total Ayat</th>
-                            <th class="fw-bold" style="width: 200px;">Progress</th>
-                            <th class="fw-bold text-center">Hari Aktif</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for p in progress %}
-                        <tr>
-                            <td class="fw-semibold">{{ p.nama_surah }}</td>
-                            <td class="text-center">
-                                <span class="badge bg-primary">{{ p.ayat_dihafal }}</span>
-                            </td>
-                            <td class="text-center">{{ p.total_ayat }}</td>
-                            <td>
-                                <div class="progress" style="height: 24px;">
-                                    <div class="progress-bar bg-success progress-bar-striped" 
-                                         data-width="{{ p.persen }}" 
-                                         style="width: 0%;">
-                                        {{ p.persen }}%
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-info">{{ p.hari_aktif }} hari</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="col-md-4">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon dark"><i class="fas fa-list"></i></div>
+                <div class="stat-val">{{ total_surah_aktif }}</div>
+                <p class="stat-label">Surah Aktif</p>
             </div>
         </div>
     </div>
-    {% endif %}
-
-    <!-- Riwayat Hafalan Section -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-0 py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold">
-                    <i class="fas fa-history text-primary me-2"></i>
-                    Riwayat Hafalan
-                </h5>
-                <div class="d-flex align-items-center">
-                    <small class="text-muted me-3">
-                        Menampilkan {{ logs|length }} dari {{ total_records }} data
-                    </small>
-                </div>
+    <div class="col-md-4">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon accent"><i class="fas fa-calendar-check"></i></div>
+                <div class="stat-val">{{ total_hari }}</div>
+                <p class="stat-label">Hari Aktif</p>
             </div>
-        </div>
-        
-        <!-- Filter Section -->
-        <div class="card-body border-bottom">
-            <form method="GET" class="row g-3 align-items-end">
-                <!-- Preserve AI pagination and filter -->
-                {% if ai_current_page > 1 %}
-                <input type="hidden" name="ai_page" value="{{ ai_current_page }}">
-                {% endif %}
-                {% if ai_filter_surah %}
-                <input type="hidden" name="ai_filter_surah" value="{{ ai_filter_surah }}">
-                {% endif %}
-                
-                <div class="col-md-4">
-                    <label for="filter_surah" class="form-label fw-semibold">Filter Surah untuk Riwayat</label>
-                    <select name="filter_surah" id="filter_surah" class="form-select">
-                        <option value="">-- Semua Surah --</option>
-                        {% for surah in surah_options %}
-                        <option value="{{ surah }}" {% if filter_surah == surah %}selected{% endif %}>
-                            {{ surah }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-1"></i> Filter
-                    </button>
-                </div>
-                {% if filter_surah %}
-                <div class="col-md-2">
-                    <a href="?{% if ai_current_page > 1 %}ai_page={{ ai_current_page }}&{% endif %}{% if ai_filter_surah %}ai_filter_surah={{ ai_filter_surah }}{% endif %}" class="btn btn-outline-secondary w-100">
-                        <i class="fas fa-times me-1"></i> Reset
-                    </a>
-                </div>
-                {% endif %}
-            </form>
-        </div>
-
-        <div class="card-body">
-            {% if logs %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="fw-bold">Tanggal</th>
-                            <th class="fw-bold">Surah</th>
-                            <th class="fw-bold">Ayat</th>
-                            <th class="fw-bold text-center">Jumlah</th>
-                            <th class="fw-bold">Guru</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for log in logs %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-calendar text-muted me-2"></i>
-                                    {{ log.tanggal }}
-                                </div>
-                            </td>
-                            <td class="fw-semibold">{{ log.nama_surah }}</td>
-                            <td>
-                                <span class="text-muted">{{ log.ayat_mulai }} - {{ log.ayat_selesai }}</span>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-success fs-6">{{ log.jumlah_ayat }} ayat</span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-user-tie text-muted me-2"></i>
-                                    {{ log.nama_guru }}
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            {% if total_pages > 1 %}
-            <nav aria-label="Pagination" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    {% if has_prev %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ prev_page }}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}{% if ai_current_page > 1 %}&ai_page={{ ai_current_page }}{% endif %}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}">
-                            <i class="fas fa-chevron-left"></i> Sebelumnya
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">
-                            <i class="fas fa-chevron-left"></i> Sebelumnya
-                        </span>
-                    </li>
-                    {% endif %}
-
-                    {% for page_num in range(1, total_pages + 1) %}
-                        {% if page_num == current_page %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ page_num }}</span>
-                        </li>
-                        {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= current_page - 1 and page_num <= current_page + 1) %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_num }}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}{% if ai_current_page > 1 %}&ai_page={{ ai_current_page }}{% endif %}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}">
-                                {{ page_num }}
-                            </a>
-                        </li>
-                        {% elif page_num == 4 and current_page > 5 %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {% elif page_num == total_pages - 3 and current_page < total_pages - 4 %}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ next_page }}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}{% if ai_current_page > 1 %}&ai_page={{ ai_current_page }}{% endif %}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}">
-                            Selanjutnya <i class="fas fa-chevron-right"></i>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">
-                            Selanjutnya <i class="fas fa-chevron-right"></i>
-                        </span>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-
-            <!-- Pagination Info -->
-            <div class="text-center mt-3">
-                <small class="text-muted">
-                    Halaman {{ current_page }} dari {{ total_pages }} 
-                    ({{ total_records }} total data, {{ per_page }} per halaman)
-                </small>
-            </div>
-            {% endif %}
-
-            {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-inbox text-muted" style="font-size: 3rem;"></i>
-                <p class="text-muted mt-3 mb-0">
-                    {% if filter_surah %}
-                    Tidak ada data hafalan untuk surah "{{ filter_surah }}".
-                    {% else %}
-                    Belum ada data hafalan.
-                    {% endif %}
-                </p>
-                {% if filter_surah %}
-                <a href="?{% if ai_current_page > 1 %}ai_page={{ ai_current_page }}&{% endif %}{% if ai_filter_surah %}ai_filter_surah={{ ai_filter_surah }}{% endif %}" class="btn btn-outline-primary btn-sm mt-2">
-                    <i class="fas fa-times me-1"></i> Reset Filter
-                </a>
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
 
-<style>
-.stat-card {
-    transition: transform 0.2s ease-in-out;
-}
+<!-- AI Estimation Section -->
+{% if prediksi_list or ai_filter_surah %}
+<div class="app-card mb-4">
+    <div class="app-card-header dark">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2>🤖 Estimasi AI — Decision Tree</h2>
+                <p>Prediksi waktu penyelesaian hafalan</p>
+            </div>
+            <span class="tag light" style="font-size:12px;">
+                {{ prediksi_list|length }} / {{ ai_total_records }}
+            </span>
+        </div>
+    </div>
 
-.stat-card:hover {
-    transform: translateY(-2px);
-}
+    <!-- AI Filter -->
+    <div class="app-card-body p-compact" style="background:var(--c-bg); border-bottom:1px solid var(--c-border);">
+        <form method="GET" class="row g-2 align-items-end">
+            {% if current_page > 1 %}<input type="hidden" name="page" value="{{ current_page }}">{% endif %}
+            {% if filter_surah %}<input type="hidden" name="filter_surah" value="{{ filter_surah }}">{% endif %}
+            <div class="col-md-5 col-lg-4">
+                <label class="form-label mb-1">Filter Surah (Prediksi AI)</label>
+                <select name="ai_filter_surah" class="form-select form-select-sm">
+                    <option value="">— Semua Surah —</option>
+                    {% for surah in ai_surah_options %}
+                    <option value="{{ surah }}" {% if ai_filter_surah == surah %}selected{% endif %}>{{ surah }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn-primary-app" style="padding:.45rem .9rem;">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+            {% if ai_filter_surah %}
+            <div class="col-auto">
+                <a href="?{% if current_page > 1 %}page={{ current_page }}&{% endif %}{% if filter_surah %}filter_surah={{ filter_surah }}{% endif %}"
+                   class="btn-outline-app" style="padding:.42rem .9rem; font-size:14px;">
+                   <i class="fas fa-xmark"></i> Reset
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
 
-.progress-bar-striped {
-    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
-    background-size: 1rem 1rem;
-}
+    <div class="app-card-body p-none">
+        {% if prediksi_list %}
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Surah</th>
+                        <th style="text-align:center; width:180px;">Progress</th>
+                        <th style="text-align:center;">Ayat</th>
+                        <th style="text-align:center;">Estimasi Selesai</th>
+                        <th style="text-align:center;">Prediksi/Hari</th>
+                        <th style="text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pred in prediksi_list %}
+                    <tr>
+                        <td style="font-weight:600;">{{ pred.nama_surah }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" data-width="{{ pred.progress_persen }}" style="width:0%;" title="{{ pred.progress_persen }}%"></div>
+                            </div>
+                            <div style="text-align: center; font-size: 11px; color: #6C757D; margin-top: 0.25rem;">{{ pred.progress_persen }}%</div>
+                        </td>
+                        <td style="text-align: center; color: #6C757D;">{{ pred.ayat_sudah }}/{{ pred.total_ayat }}</td>
+                        <td style="text-align:center;">
+                            {% if pred.sisa_ayat > 0 %}
+                            <div>
+                                <span class="tag dark">{{ pred.estimasi_low }}–{{ pred.estimasi_high }} hari</span>
+                                <div style="font-size: 11px; color: #6C757D; margin-top: 0.2rem;">{{ pred.sisa_ayat }} sisa</div>
+                            </div>
+                            {% else %}
+                            <span class="tag accent">✓ Selesai</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if pred.sisa_ayat > 0 %}
+                            <span class="tag neutral">~{{ pred.prediksi_ayat_per_hari }} ayat/hari</span>
+                            {% else %}
+                            <span style="color: #6C757D;">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if pred.sisa_ayat > 0 %}
+                            <span style="color:var(--c-accent);" title="{{ pred.insight }}"><i class="fas fa-clock"></i></span>
+                            {% else %}
+                            <span style="color:#166534;"><i class="fas fa-circle-check"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-.table th {
-    border-top: none;
-    font-size: 0.9rem;
-}
+        <!-- AI Pagination -->
+        {% if ai_total_pages > 1 %}
+        <div style="padding:.875rem 1rem; border-top:1px solid var(--c-border); background:var(--c-bg);">
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center mb-1">
+                    <li class="page-item {% if not ai_has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="?ai_page={{ ai_prev_page }}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}{% if current_page > 1 %}&page={{ current_page }}{% endif %}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}">
+                            &laquo; Prev
+                        </a>
+                    </li>
+                    {% for p in range(1, ai_total_pages + 1) %}
+                        {% if p == ai_current_page %}
+                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                        {% elif p <= 2 or p > ai_total_pages - 2 or (p >= ai_current_page - 1 and p <= ai_current_page + 1) %}
+                        <li class="page-item"><a class="page-link" href="?ai_page={{ p }}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}{% if current_page > 1 %}&page={{ current_page }}{% endif %}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}">{{ p }}</a></li>
+                        {% elif p == 3 and ai_current_page > 4 or p == ai_total_pages - 2 and ai_current_page < ai_total_pages - 3 %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if not ai_has_next %}disabled{% endif %}">
+                        <a class="page-link" href="?ai_page={{ ai_next_page }}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}{% if current_page > 1 %}&page={{ current_page }}{% endif %}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}">
+                            Next &raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <p class="text-muted text-center mb-0" style="font-size:12px;">
+                Hal. {{ ai_current_page }} / {{ ai_total_pages }} ({{ ai_total_records }} prediksi, {{ ai_per_page }}/hal.)
+            </p>
+        </div>
+        {% endif %}
 
-.table td {
-    font-size: 0.9rem;
-}
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-robot"></i></div>
+            <h2 style="color:var(--c-neutral);">
+                {% if ai_filter_surah %}Tidak ada prediksi untuk "{{ ai_filter_surah }}"
+                {% else %}Belum ada prediksi AI{% endif %}
+            </h2>
+            {% if ai_filter_surah %}
+            <div style="margin-top:.75rem;">
+                <a href="?{% if current_page > 1 %}page={{ current_page }}&{% endif %}{% if filter_surah %}filter_surah={{ filter_surah }}{% endif %}"
+                   class="btn-primary-app">Reset Filter AI</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
-.pagination .page-link {
-    border-radius: 8px;
-    margin: 0 2px;
-    border: 1px solid #dee2e6;
-}
+<!-- Progress Per Surah -->
+{% if progress %}
+<div class="app-card mb-4">
+    <div class="app-card-header dark">
+        <h2>📊 Progress Per Surah</h2>
+        <p>Rincian kemajuan hafalan setiap surah</p>
+    </div>
+    <div class="app-card-body p-none">
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Surah</th>
+                        <th style="text-align:center;">Ayat Dihafal</th>
+                        <th style="text-align:center;">Total</th>
+                        <th style="width:200px;">Progress</th>
+                        <th style="text-align:center;">Hari Aktif</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in progress %}
+                    <tr>
+                        <td style="font-weight:600;">{{ p.nama_surah }}</td>
+                        <td style="text-align:center;"><span class="tag dark">{{ p.ayat_dihafal }}</span></td>
+                        <td style="text-align: center; color: #6C757D;">{{ p.total_ayat }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" data-width="{{ p.persen }}" style="width:0%;" title="{{ p.persen }}%"></div>
+                            </div>
+                            <div style="font-size: 11px; color: #6C757D; margin-top: 0.2rem;">{{ p.persen }}%</div>
+                        </td>
+                        <td style="text-align:center;"><span class="tag neutral">{{ p.hari_aktif }} hari</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 
-.pagination .page-item.active .page-link {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
+<!-- Riwayat Hafalan -->
+<div class="app-card">
+    <div class="app-card-header dark">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2>📋 Riwayat Hafalan</h2>
+                <p>Catatan aktivitas hafalan harian</p>
+            </div>
+            <span class="tag light" style="font-size:12px;">
+                {{ logs|length }} / {{ total_records }}
+            </span>
+        </div>
+    </div>
 
-.card {
-    border-radius: 12px;
-}
+    <!-- Filter -->
+    <div class="app-card-body p-compact" style="background:var(--c-bg); border-bottom:1px solid var(--c-border);">
+        <form method="GET" class="row g-2 align-items-end">
+            {% if ai_current_page > 1 %}<input type="hidden" name="ai_page" value="{{ ai_current_page }}">{% endif %}
+            {% if ai_filter_surah %}<input type="hidden" name="ai_filter_surah" value="{{ ai_filter_surah }}">{% endif %}
+            <div class="col-md-5 col-lg-4">
+                <label class="form-label mb-1">Filter Surah</label>
+                <select name="filter_surah" class="form-select form-select-sm">
+                    <option value="">— Semua Surah —</option>
+                    {% for surah in surah_options %}
+                    <option value="{{ surah }}" {% if filter_surah == surah %}selected{% endif %}>{{ surah }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn-primary-app" style="padding:.45rem .9rem;">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+            {% if filter_surah %}
+            <div class="col-auto">
+                <a href="?{% if ai_current_page > 1 %}ai_page={{ ai_current_page }}&{% endif %}{% if ai_filter_surah %}ai_filter_surah={{ ai_filter_surah }}{% endif %}"
+                   class="btn-outline-app" style="padding:.42rem .9rem; font-size:14px;">
+                   <i class="fas fa-xmark"></i> Reset
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
 
-.form-select, .btn {
-    border-radius: 8px;
-}
+    <div class="app-card-body p-none">
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Surah</th>
+                        <th>Ayat</th>
+                        <th style="text-align:center;">Jumlah</th>
+                        <th>Guru</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="font-weight:600; white-space:nowrap;">{{ log.tanggal }}</td>
+                        <td><span class="tag dark">{{ log.nama_surah }}</span></td>
+                        <td style="color:var(--c-neutral);">{{ log.ayat_mulai }}–{{ log.ayat_selesai }}</td>
+                        <td style="text-align:center;"><span class="tag accent">{{ log.jumlah_ayat }} ayat</span></td>
+                        <td style="color:var(--c-neutral);">{{ log.nama_guru }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-@media (max-width: 768px) {
-    .table-responsive {
-        font-size: 0.8rem;
-    }
-    
-    .stat-card h2 {
-        font-size: 1.5rem;
-    }
-    
-    .pagination {
-        flex-wrap: wrap;
-    }
-    
-    .pagination .page-link {
-        padding: 0.375rem 0.5rem;
-        font-size: 0.875rem;
-    }
-}
-</style>
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div style="padding:.875rem 1rem; border-top:1px solid var(--c-border); background:var(--c-bg);">
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center mb-1">
+                    <li class="page-item {% if not has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ prev_page }}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}{% if ai_current_page > 1 %}&ai_page={{ ai_current_page }}{% endif %}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}">
+                            &laquo; Prev
+                        </a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == current_page %}
+                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                        {% elif p <= 2 or p > total_pages - 2 or (p >= current_page - 1 and p <= current_page + 1) %}
+                        <li class="page-item"><a class="page-link" href="?page={{ p }}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}{% if ai_current_page > 1 %}&ai_page={{ ai_current_page }}{% endif %}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}">{{ p }}</a></li>
+                        {% elif p == 3 and current_page > 4 or p == total_pages - 2 and current_page < total_pages - 3 %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if not has_next %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ next_page }}{% if filter_surah %}&filter_surah={{ filter_surah }}{% endif %}{% if ai_current_page > 1 %}&ai_page={{ ai_current_page }}{% endif %}{% if ai_filter_surah %}&ai_filter_surah={{ ai_filter_surah }}{% endif %}">
+                            Next &raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <p class="text-muted text-center mb-0" style="font-size:12px;">
+                Hal. {{ current_page }} / {{ total_pages }} ({{ total_records }} data, {{ per_page }}/hal.)
+            </p>
+        </div>
+        {% endif %}
 
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+            <h2 style="color:var(--c-neutral);">
+                {% if filter_surah %}Tidak ada hafalan untuk "{{ filter_surah }}"
+                {% else %}Belum ada data hafalan{% endif %}
+            </h2>
+            {% if filter_surah %}
+            <div style="margin-top:.75rem;">
+                <a href="?{% if ai_current_page > 1 %}ai_page={{ ai_current_page }}&{% endif %}{% if ai_filter_surah %}ai_filter_surah={{ ai_filter_surah }}{% endif %}"
+                   class="btn-primary-app">Reset Filter</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Set progress bar widths from data attributes
-    const progressBars = document.querySelectorAll('.progress-bar[data-width]');
-    progressBars.forEach(function(bar) {
-        const width = bar.getAttribute('data-width');
-        bar.style.width = width + '%';
-    });
-    
-    // Auto-submit filter when selection changes for riwayat
-    const filterSelect = document.getElementById('filter_surah');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            if (this.value === '') {
-                // If "Semua Surah" is selected, redirect to clear filter but preserve AI params
-                const urlParams = new URLSearchParams(window.location.search);
-                const aiPage = urlParams.get('ai_page');
-                const aiFilter = urlParams.get('ai_filter_surah');
-                let newUrl = '?';
-                if (aiPage && aiPage !== '1') newUrl += 'ai_page=' + aiPage + '&';
-                if (aiFilter) newUrl += 'ai_filter_surah=' + encodeURIComponent(aiFilter) + '&';
-                newUrl = newUrl.replace(/&$/, ''); // Remove trailing &
-                if (newUrl === '?') newUrl = '';
-                window.location.href = newUrl;
-            } else {
-                // Submit the form
-                this.closest('form').submit();
-            }
-        });
-    }
-    
-    // Auto-submit filter when selection changes for AI
-    const aiFilterSelect = document.getElementById('ai_filter_surah');
-    if (aiFilterSelect) {
-        aiFilterSelect.addEventListener('change', function() {
-            if (this.value === '') {
-                // If "Semua Surah" is selected, redirect to clear AI filter but preserve riwayat params
-                const urlParams = new URLSearchParams(window.location.search);
-                const page = urlParams.get('page');
-                const filter = urlParams.get('filter_surah');
-                let newUrl = '?';
-                if (page && page !== '1') newUrl += 'page=' + page + '&';
-                if (filter) newUrl += 'filter_surah=' + encodeURIComponent(filter) + '&';
-                newUrl = newUrl.replace(/&$/, ''); // Remove trailing &
-                if (newUrl === '?') newUrl = '';
-                window.location.href = newUrl;
-            } else {
-                // Submit the form
-                this.closest('form').submit();
-            }
-        });
-    }
-    
-    // Add loading state to filter buttons
-    const filterForms = document.querySelectorAll('form');
-    filterForms.forEach(function(form) {
-        form.addEventListener('submit', function() {
-            const submitBtn = this.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                const originalText = submitBtn.innerHTML;
-                if (originalText.includes('Filter AI')) {
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memfilter AI...';
-                } else {
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memfilter...';
-                }
-                submitBtn.disabled = true;
-            }
-        });
+    document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+        bar.style.width = bar.getAttribute('data-width') + '%';
     });
 });
 </script>

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Data Pribadi{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Data Pribadi</h1>
+    <p>Informasi akun dan alamat Anda</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-xl-6" style="width: 80%;">
+
+        <!-- Info Akun (read-only) -->
+        <div class="app-card mb-4">
+            <div class="app-card-header dark">
+                <div style="display:flex; align-items:center; gap:.6rem;">
+                    <i class="fas fa-id-card" style="color:rgba(255,255,255,.7);"></i>
+                    <h2>Informasi Akun</h2>
+                </div>
+            </div>
+            <div class="app-card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nama</label>
+                        <div class="form-control bg-light">{{ db_user.nama }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">NISN</label>
+                        <div class="form-control bg-light">{{ db_user.nisn or '—' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <div class="form-control bg-light">{{ db_user.email or '—' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Role</label>
+                        <div class="form-control bg-light" style="display:flex; align-items:center;">
+                            <span class="tag accent">Siswa</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="form-hint mt-2">
+                    <i class="fas fa-lock me-1"></i> Nama, NISN, dan Email tidak dapat diubah.
+                </p>
+            </div>
+        </div>
+
+        <!-- Form Alamat -->
+        <div class="app-card">
+            <div class="app-card-header light">
+                <div style="display:flex; align-items:center; gap:.6rem;">
+                    <i class="fas fa-map-location-dot" style="color:var(--c-primary);"></i>
+                    <h2>Alamat</h2>
+                </div>
+            </div>
+            <div class="app-card-body">
+                <form method="POST" action="/siswa/data-pribadi">
+                    <div class="mb-3">
+                        <label class="form-label">Provinsi</label>
+                        <select id="provinsiSelect" name="provinsi" class="form-select">
+                            <option value="">— Pilih Provinsi —</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kabupaten / Kota</label>
+                        <select id="kabupatenSelect" name="kabupaten" class="form-select" disabled>
+                            <option value="">— Pilih Kabupaten/Kota —</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kecamatan</label>
+                        <select id="kecamatanSelect" name="kecamatan" class="form-select" disabled>
+                            <option value="">— Pilih Kecamatan —</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kelurahan / Desa</label>
+                        <select id="kelurahanSelect" name="kelurahan" class="form-select" disabled>
+                            <option value="">— Pilih Kelurahan/Desa —</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">
+                            Alamat Detail <span class="text-muted" style="font-weight:400;">(opsional)</span>
+                        </label>
+                        <textarea name="alamat_detail" class="form-control" rows="3"
+                                  placeholder="Nama jalan, nomor rumah, RT/RW, dll...">{{ db_user.alamat_detail or '' }}</textarea>
+                    </div>
+
+                    <button type="submit" class="btn-dark-app">
+                        <i class="fas fa-floppy-disk"></i> Simpan Alamat
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const savedProvinsi  = "{{ db_user.provinsi or '' }}";
+const savedKabupaten = "{{ db_user.kabupaten or '' }}";
+const savedKecamatan = "{{ db_user.kecamatan or '' }}";
+const savedKelurahan = "{{ db_user.kelurahan or '' }}";
+const BASE = "https://www.emsifa.com/api-wilayah-indonesia/api";
+
+function populateSelect(selectEl, items, savedVal, nextFn) {
+    selectEl.innerHTML = '<option value="">— Pilih —</option>';
+    items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.name;
+        opt.dataset.id = item.id;
+        opt.textContent = item.name;
+        if (item.name === savedVal) opt.selected = true;
+        selectEl.appendChild(opt);
+    });
+    selectEl.disabled = false;
+    if (savedVal && nextFn) {
+        const selected = [...selectEl.options].find(o => o.value === savedVal);
+        if (selected) nextFn(selected.dataset.id);
+    }
+}
+
+fetch(`${BASE}/provinces.json`)
+    .then(r => r.json())
+    .then(data => populateSelect(
+        document.getElementById('provinsiSelect'), data, savedProvinsi, id => loadKabupaten(id)
+    ));
+
+function loadKabupaten(provId) {
+    const sel = document.getElementById('kabupatenSelect');
+    sel.innerHTML = '<option value="">Memuat...</option>';
+    fetch(`${BASE}/regencies/${provId}.json`).then(r => r.json()).then(data => {
+        populateSelect(sel, data, savedKabupaten, id => loadKecamatan(id));
+        document.getElementById('kecamatanSelect').disabled = true;
+        document.getElementById('kelurahanSelect').disabled = true;
+    });
+}
+function loadKecamatan(kabId) {
+    const sel = document.getElementById('kecamatanSelect');
+    sel.innerHTML = '<option value="">Memuat...</option>';
+    fetch(`${BASE}/districts/${kabId}.json`).then(r => r.json()).then(data => {
+        populateSelect(sel, data, savedKecamatan, id => loadKelurahan(id));
+        document.getElementById('kelurahanSelect').disabled = true;
+    });
+}
+function loadKelurahan(kecId) {
+    const sel = document.getElementById('kelurahanSelect');
+    sel.innerHTML = '<option value="">Memuat...</option>';
+    fetch(`${BASE}/villages/${kecId}.json`).then(r => r.json()).then(data => {
+        populateSelect(sel, data, savedKelurahan, null);
+    });
+}
+
+document.getElementById('provinsiSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    ['kabupatenSelect','kecamatanSelect','kelurahanSelect'].forEach(id => {
+        document.getElementById(id).innerHTML = '<option value="">— Pilih —</option>';
+        document.getElementById(id).disabled = true;
+    });
+    if (opt.dataset.id) loadKabupaten(opt.dataset.id);
+});
+document.getElementById('kabupatenSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    ['kecamatanSelect','kelurahanSelect'].forEach(id => {
+        document.getElementById(id).innerHTML = '<option value="">— Pilih —</option>';
+        document.getElementById(id).disabled = true;
+    });
+    if (opt.dataset.id) loadKecamatan(opt.dataset.id);
+});
+document.getElementById('kecamatanSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    document.getElementById('kelurahanSelect').innerHTML = '<option value="">— Pilih —</option>';
+    document.getElementById('kelurahanSelect').disabled = true;
+    if (opt.dataset.id) loadKelurahan(opt.dataset.id);
+});
+</script>
+{% endblock %}

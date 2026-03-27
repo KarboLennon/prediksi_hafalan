@@ -10,8 +10,11 @@ USE quran_hafalan;
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nama VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
+    nisn VARCHAR(20) NULL UNIQUE,
+    nuptk VARCHAR(20) NULL UNIQUE,
+    email VARCHAR(100) NULL UNIQUE,
     password VARCHAR(64) NOT NULL,
+    must_change_password TINYINT(1) NOT NULL DEFAULT 0,
     role ENUM('admin', 'siswa', 'guru') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

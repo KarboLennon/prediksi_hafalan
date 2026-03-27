@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% block title %}Input Hafalan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Input Hafalan Siswa</h1>
+    <p>Kelola dan pantau progress hafalan Al-Qur'an siswa</p>
+</div>
+
+<div class="row g-4">
+    <!-- ── Form Input ── -->
+    <div class="col-xl-5 col-lg-5">
+        <div class="app-card">
+            <div class="app-card-header dark">
+                <h2>Form Input Hafalan</h2>
+                <p>Tambah data hafalan baru</p>
+            </div>
+            <div class="app-card-body">
+                <form method="POST" action="/guru/input-hafalan" id="formHafalan">
+
+                    <!-- Pilih Siswa -->
+                    <div class="mb-3">
+                        <label class="form-label">Pilih Siswa</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" id="siswaSearch" class="form-control"
+                                   placeholder="Cari nama siswa...">
+                        </div>
+                        <select name="siswa_id" id="siswaSelect" class="form-select" required>
+                            <option value="">— Pilih Siswa —</option>
+                            {% for s in daftar_siswa %}
+                            <option value="{{ s.id }}">{{ s.nama }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Pilih Surah -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-book-quran" style="color:var(--c-primary); margin-right:.3rem;"></i>
+                            Pilih Surah
+                        </label>
+                        <select name="surah_id" id="surahSelect" class="form-select" required>
+                            <option value="">— Pilih Surah —</option>
+                            {% for s in daftar_surah %}
+                            <option value="{{ s.id }}" data-ayat="{{ s.jumlah_ayat }}">
+                                {{ s.id }}. {{ s.nama }} ({{ s.jumlah_ayat }} ayat)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- AI Estimation Box -->
+                    <div id="prediksiBox" class="ai-box mb-3" style="display:none;">
+                        <div class="ai-box-header">
+                            <div class="ai-icon"><i class="fas fa-robot"></i></div>
+                            <strong>Estimasi AI — Decision Tree</strong>
+                        </div>
+                        <div class="ai-stats">
+                            <div class="ai-stat">
+                                <div class="ai-stat-val" id="predSisa">—</div>
+                                <div class="ai-stat-label">Sisa Ayat</div>
+                            </div>
+                            <div class="ai-stat">
+                                <div class="ai-stat-val accent" id="predSpeed">—</div>
+                                <div class="ai-stat-label">Prediksi/Hari</div>
+                            </div>
+                            <div class="ai-stat">
+                                <div class="ai-stat-val muted" id="predHari">—</div>
+                                <div class="ai-stat-label">Estimasi</div>
+                            </div>
+                        </div>
+                        <div class="progress mt-2" style="height:6px;">
+                            <div class="progress-bar" id="predProgress" style="width:0%; transition:width .5s;"></div>
+                        </div>
+                        <small class="form-hint" id="predDetail"></small>
+                    </div>
+
+                    <!-- Ayat Range -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Ayat Mulai</label>
+                            <input type="number" name="ayat_mulai" id="ayatMulai"
+                                   class="form-control text-center fw-bold"
+                                   min="1" required placeholder="1">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Ayat Selesai</label>
+                            <input type="number" name="ayat_selesai" id="ayatSelesai"
+                                   class="form-control text-center fw-bold"
+                                   min="1" required placeholder="1">
+                        </div>
+                    </div>
+
+                    <!-- Catatan -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            Catatan
+                            <span class="text-muted" style="font-weight:400;">(opsional)</span>
+                        </label>
+                        <textarea name="catatan" class="form-control" rows="3"
+                                  placeholder="Hafalan lancar, perlu diulang, dll..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-primary-app w-100" style="justify-content:center; padding:.65rem;">
+                        <i class="fas fa-floppy-disk"></i> Simpan Hafalan
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Log Hafalan ── -->
+    <div class="col-xl-7 col-lg-7">
+        <div class="app-card">
+            <div class="app-card-header dark">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+                    <div>
+                        <h2>Log Hafalan Terbaru</h2>
+                        <p>Riwayat input hafalan siswa</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:.5rem;">
+                        <span style="color:rgba(255,255,255,.75); font-size:12px;">Tampilkan</span>
+                        <select id="perPageSelect"
+                                style="padding:.25rem .5rem; background:rgba(255,255,255,.12); color:var(--c-white); border:1px solid rgba(255,255,255,.3); border-radius:6px; font-size:13px; width:auto;">
+                            {% for opt in [10, 25, 50, 100, 250] %}
+                            <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}
+                                    style="color:var(--c-primary); background:var(--c-white);">{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                        <span style="color:rgba(255,255,255,.75); font-size:12px;">/ <strong style="color:var(--c-white);">{{ total_logs }}</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card-body p-none">
+                {% if logs %}
+                <div class="table-responsive">
+                    <table class="app-table" style="table-layout:fixed; width:100%;">
+                        <colgroup>
+                            <col style="width:105px;">
+                            <col style="width:130px;">
+                            <col style="width:115px;" class="d-none d-md-table-cell">
+                            <col style="width:90px;">
+                            <col style="width:85px;">
+                            <col>
+                            <col style="width:52px;">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Siswa</th>
+                                <th class="d-none d-md-table-cell">Surah</th>
+                                <th>Ayat</th>
+                                <th style="text-align:center;">Jumlah</th>
+                                <th class="d-none d-lg-table-cell">Catatan</th>
+                                <th style="text-align:center;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td style="white-space:nowrap; font-size:12.5px;">{{ log.tanggal }}</td>
+                                <td style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ log.nama_siswa }}</td>
+                                <td class="d-none d-md-table-cell" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    <span class="tag dark" style="font-size:11px;">{{ log.nama_surah }}</span>
+                                </td>
+                                <td style="color:var(--c-neutral); white-space:nowrap; font-size:13px;">{{ log.ayat_mulai }}–{{ log.ayat_selesai }}</td>
+                                <td style="text-align:center;">
+                                    <span class="tag accent" style="font-size:11px;">{{ log.jumlah_ayat }} ayat</span>
+                                </td>
+                                <td class="d-none d-lg-table-cell" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-neutral); font-size:12.5px;">
+                                    {% if log.catatan %}
+                                    <span title="{{ log.catatan }}">{{ log.catatan[:28] }}{% if log.catatan|length > 28 %}…{% endif %}</span>
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td style="text-align:center;">
+                                    <button class="btn-act warn btn-edit" title="Edit Hafalan"
+                                        data-id="{{ log.id }}"
+                                        data-siswa="{{ log.nama_siswa|e }}"
+                                        data-surah-id="{{ log.surah_id }}"
+                                        data-surah-nama="{{ log.nama_surah|e }}"
+                                        data-ayat-mulai="{{ log.ayat_mulai }}"
+                                        data-ayat-selesai="{{ log.ayat_selesai }}"
+                                        data-catatan="{{ (log.catatan or '')|e }}">
+                                        <i class="fas fa-pen" style="font-size:11px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <div style="padding:.875rem 1rem; border-top:1px solid var(--c-border); background:var(--c-bg);">
+                    <nav>
+                        <ul class="pagination pagination-sm justify-content-center mb-1">
+                            <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                                <a class="page-link" href="?page={{ page - 1 }}&per_page={{ per_page }}">&laquo; Prev</a>
+                            </li>
+                            {% for p in range(1, total_pages + 1) %}
+                                {% if p == page %}
+                                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                                {% elif p <= 2 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                                <li class="page-item"><a class="page-link" href="?page={{ p }}&per_page={{ per_page }}">{{ p }}</a></li>
+                                {% elif p == 3 and page > 4 or p == total_pages - 2 and page < total_pages - 3 %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                                <a class="page-link" href="?page={{ page + 1 }}&per_page={{ per_page }}">Next &raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    <p class="text-muted text-center mb-0" style="font-size:12px;">
+                        Hal. {{ page }} / {{ total_pages }}
+                    </p>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                    <h2 style="color:var(--c-neutral);">Belum ada data hafalan</h2>
+                    <p>Mulai input hafalan untuk melihat riwayat di sini</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Edit Hafalan ── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border:none; border-radius:var(--radius); overflow:hidden;">
+            <div class="modal-header" style="background:var(--c-accent); border-bottom:none; padding:1.1rem 1.5rem;">
+                <h5 class="modal-title" style="color:var(--c-primary); font-weight:700; font-size:16px;">
+                    <i class="fas fa-pen me-2"></i>Edit Hafalan
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="formEdit">
+                <div class="modal-body" style="padding:1.5rem;">
+                    <div class="app-alert warning" style="margin-bottom:1rem; padding:.625rem .875rem; font-size:13px;">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <span>Edit hanya untuk koreksi kesalahan input.</span>
+                    </div>
+                    <p style="font-size:13px; color:var(--c-neutral); margin-bottom:1rem;">
+                        Siswa: <strong id="editInfoSiswa" style="color:var(--c-primary);"></strong>
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Surah</label>
+                        <select name="surah_id" id="editSurahSelect" class="form-select" required>
+                            <option value="">— Pilih Surah —</option>
+                            {% for s in daftar_surah %}
+                            <option value="{{ s.id }}" data-ayat="{{ s.jumlah_ayat }}">
+                                {{ s.id }}. {{ s.nama }} ({{ s.jumlah_ayat }} ayat)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Ayat Mulai</label>
+                            <input type="number" name="ayat_mulai" id="editAyatMulai"
+                                   class="form-control text-center fw-bold" min="1" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Ayat Selesai</label>
+                            <input type="number" name="ayat_selesai" id="editAyatSelesai"
+                                   class="form-control text-center fw-bold" min="1" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label">Catatan</label>
+                        <textarea name="catatan" id="editCatatan" class="form-control" rows="2"
+                                  placeholder="Catatan hafalan..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--c-border); padding:1rem 1.5rem;">
+                    <button type="button" class="btn-outline-app" data-bs-dismiss="modal"
+                            style="padding:.5rem 1rem; font-size:14px;">Batal</button>
+                    <button type="submit" class="btn-primary-app" style="padding:.5rem 1.25rem;">
+                        <i class="fas fa-floppy-disk"></i> Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<style>
+/* AI Estimation Box */
+.ai-box {
+    background: var(--c-bg);
+    border: 1px solid #a7f3d0;
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+}
+.ai-box-header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .875rem;
+    font-size: 13.5px;
+    color: var(--c-primary);
+}
+.ai-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--c-primary);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.ai-icon i { color: var(--c-white); font-size: 12px; }
+.ai-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .625rem;
+    text-align: center;
+    margin-bottom: .75rem;
+}
+.ai-stat {
+    background: var(--c-white);
+    border-radius: 8px;
+    padding: .625rem .5rem;
+    border: 1px solid var(--c-border);
+}
+.ai-stat-val {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--c-primary);
+    line-height: 1.2;
+}
+.ai-stat-val.accent { color: #166534; }
+.ai-stat-val.muted  { color: var(--c-neutral); }
+.ai-stat-label { font-size: 11px; color: var(--c-neutral); font-weight: 500; margin-top: .15rem; }
+</style>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const siswaSelect  = document.getElementById('siswaSelect');
+    const siswaSearch  = document.getElementById('siswaSearch');
+    const surahSelect  = document.getElementById('surahSelect');
+    const ayatMulai    = document.getElementById('ayatMulai');
+    const ayatSelesai  = document.getElementById('ayatSelesai');
+    const prediksiBox  = document.getElementById('prediksiBox');
+
+    // ── Per-page selector ──
+    document.getElementById('perPageSelect').addEventListener('change', function() {
+        const url = new URL(window.location);
+        url.searchParams.set('per_page', this.value);
+        url.searchParams.set('page', '1');
+        window.location = url;
+    });
+
+    // ── Search siswa ──
+    const allSiswaOptions = [...siswaSelect.options].map(o => ({
+        value: o.value, text: o.textContent.trim()
+    }));
+
+    siswaSearch.addEventListener('input', function() {
+        const kw = this.value.toLowerCase();
+        siswaSelect.innerHTML = '';
+        allSiswaOptions.forEach(opt => {
+            if (!kw || opt.value === '' || opt.text.toLowerCase().includes(kw)) {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.textContent = opt.text;
+                siswaSelect.appendChild(o);
+            }
+        });
+        const real = [...siswaSelect.options].filter(o => o.value !== '');
+        if (real.length === 1) {
+            siswaSelect.value = real[0].value;
+            siswaSelect.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // ── Auto-fill ayat mulai ──
+    function fetchLastAyat() {
+        const siswaId = siswaSelect.value;
+        const surahId = surahSelect.value;
+        if (!siswaId || !surahId) return;
+
+        fetch(`/api/last-ayat?siswa_id=${siswaId}&surah_id=${surahId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) return;
+                ayatMulai.max  = data.total_ayat;
+                ayatSelesai.max = data.total_ayat;
+                if (data.selesai) {
+                    ayatMulai.value = '';
+                    ayatSelesai.value = '';
+                    alert(`Siswa sudah selesai menghafal surah ini (${data.total_ayat} ayat)`);
+                } else {
+                    ayatMulai.value = data.next_ayat;
+                    ayatSelesai.value = '';
+                    ayatSelesai.focus();
+                }
+            })
+            .catch(() => {});
+    }
+
+    // ── Prediksi ML ──
+    function fetchPrediksi() {
+        const siswaId = siswaSelect.value;
+        const surahId = surahSelect.value;
+        if (!siswaId || !surahId) { prediksiBox.style.display = 'none'; return; }
+
+        fetch(`/api/prediksi?siswa_id=${siswaId}&surah_id=${surahId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { prediksiBox.style.display = 'none'; return; }
+                document.getElementById('predSisa').textContent   = data.sisa_ayat;
+                document.getElementById('predSpeed').textContent  = data.prediksi_ayat_per_hari + ' ayat';
+                document.getElementById('predHari').textContent   = data.sisa_ayat === 0 ? 'Selesai!' : data.estimasi_low + '–' + data.estimasi_high + ' hari';
+                document.getElementById('predProgress').style.width = data.progress_persen + '%';
+                document.getElementById('predDetail').textContent = `Progress: ${data.ayat_sudah}/${data.total_ayat} (${data.progress_persen}%) · ${data.insight}`;
+                prediksiBox.style.display = 'block';
+            })
+            .catch(() => { prediksiBox.style.display = 'none'; });
+    }
+
+    // ── Event listeners ──
+    siswaSelect.addEventListener('change', () => { fetchLastAyat(); fetchPrediksi(); });
+
+    surahSelect.addEventListener('change', function() {
+        const max = this.options[this.selectedIndex].dataset.ayat || 1;
+        ayatMulai.max  = max;
+        ayatSelesai.max = max;
+        ayatMulai.value = '';
+        ayatSelesai.value = '';
+        fetchLastAyat();
+        fetchPrediksi();
+    });
+
+    document.getElementById('formHafalan').addEventListener('submit', function(e) {
+        if (parseInt(ayatSelesai.value) < parseInt(ayatMulai.value)) {
+            e.preventDefault();
+            alert('Ayat selesai harus >= ayat mulai');
+        }
+    });
+
+    // ── Edit Modal ──
+    const editModal       = new bootstrap.Modal(document.getElementById('editModal'));
+    const editSurahSelect = document.getElementById('editSurahSelect');
+
+    editSurahSelect.addEventListener('change', function() {
+        const max = this.options[this.selectedIndex].dataset.ayat || 1;
+        document.getElementById('editAyatMulai').max  = max;
+        document.getElementById('editAyatSelesai').max = max;
+    });
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-edit');
+        if (!btn) return;
+
+        document.getElementById('editInfoSiswa').textContent       = btn.dataset.siswa;
+        document.getElementById('editAyatMulai').value             = btn.dataset.ayatMulai;
+        document.getElementById('editAyatSelesai').value           = btn.dataset.ayatSelesai;
+        document.getElementById('editCatatan').value               = btn.dataset.catatan;
+        document.getElementById('formEdit').action                 = `/guru/edit-hafalan/${btn.dataset.id}`;
+
+        editSurahSelect.value = btn.dataset.surahId;
+        editSurahSelect.dispatchEvent(new Event('change'));
+
+        editModal.show();
+    });
+
+    document.getElementById('formEdit').addEventListener('submit', function(e) {
+        const mulai   = parseInt(document.getElementById('editAyatMulai').value);
+        const selesai = parseInt(document.getElementById('editAyatSelesai').value);
+        if (selesai < mulai) { e.preventDefault(); alert('Ayat selesai harus >= ayat mulai'); }
+    });
+});
+</script>
+{% endblock %}

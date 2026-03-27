@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from datetime import date
+from fastapi.staticfiles import StaticFiles
+from datetime import date, datetime, timezone, timedelta
 import hmac
 import hashlib
 import json
@@ -10,11 +11,14 @@ import base64
 from app.database import (
     get_db, hash_password, init_db,
     get_surah, get_surah_list, get_surah_name,
+    find_user_by_identifier,
 )
+from typing import Optional
 from app.predictor import prediksi_hafalan
 import app.database as db_module
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 SECRET = "quran-hafalan-secret-key-2024"
@@ -77,6 +81,10 @@ def require_role(request: Request, role: str):
         return None
     if user["role"] != role:
         return None
+    # Cek must_change_password dari DB
+    db_user = db_fetchone("SELECT must_change_password FROM users WHERE id = %s", (user["id"],))
+    if db_user and db_user.get("must_change_password"):
+        return None  # akan redirect ke login → ganti password
     return user
 
 
@@ -105,13 +113,21 @@ def login_page(request: Request):
 
 
 @app.post("/login", response_class=HTMLResponse)
-def login(request: Request, email: str = Form(...), password: str = Form(...)):
-    user = db_fetchone("SELECT * FROM users WHERE email = %s", (email,))
+def login(request: Request, identifier: str = Form(...), password: str = Form(...)):
+    # Cari user by email, NISN, atau NUPTK
+    user = find_user_by_identifier(identifier)
 
     if not user or user["password"] != hash_password(password):
         return templates.TemplateResponse("login.html", {
-            "request": request, "user": None, "error": "Email atau password salah"
+            "request": request, "user": None, "error": "NISN/NUPTK/Email atau password salah"
         })
+
+    # Cek apakah harus ganti password dulu
+    if user.get("must_change_password"):
+        token = create_session(user["id"], user["role"], user["nama"])
+        response = RedirectResponse("/ganti-password", status_code=302)
+        response.set_cookie("session", token, httponly=True, max_age=86400)
+        return response
 
     token = create_session(user["id"], user["role"], user["nama"])
     response = RedirectResponse(f"/{user['role']}", status_code=302)
@@ -123,6 +139,57 @@ def login(request: Request, email: str = Form(...), password: str = Form(...)):
 def logout():
     response = RedirectResponse("/login", status_code=302)
     response.delete_cookie("session")
+    return response
+
+
+# ============================
+# GANTI PASSWORD (first login)
+# ============================
+@app.get("/ganti-password", response_class=HTMLResponse)
+def ganti_password_page(request: Request):
+    user = get_session(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    # Cek apakah memang harus ganti password
+    db_user = db_fetchone("SELECT must_change_password FROM users WHERE id = %s", (user["id"],))
+    if not db_user or not db_user["must_change_password"]:
+        return RedirectResponse(f"/{user['role']}", status_code=302)
+
+    return templates.TemplateResponse("ganti_password.html", {
+        "request": request, "user": user, "error": None, "alert": None,
+    })
+
+
+@app.post("/ganti-password", response_class=HTMLResponse)
+def ganti_password(
+    request: Request,
+    password_baru: str = Form(...),
+    konfirmasi: str = Form(...),
+):
+    user = get_session(request)
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    if len(password_baru) < 6:
+        return templates.TemplateResponse("ganti_password.html", {
+            "request": request, "user": user, "alert": None,
+            "error": "Password minimal 6 karakter",
+        })
+
+    if password_baru != konfirmasi:
+        return templates.TemplateResponse("ganti_password.html", {
+            "request": request, "user": user, "alert": None,
+            "error": "Password dan konfirmasi tidak cocok",
+        })
+
+    # Update password + set must_change_password = 0
+    db_execute(
+        "UPDATE users SET password = %s, must_change_password = 0 WHERE id = %s",
+        (hash_password(password_baru), user["id"])
+    )
+
+    response = RedirectResponse(f"/{user['role']}", status_code=302)
     return response
 
 
@@ -154,6 +221,7 @@ def admin_dashboard(request: Request):
         "total_siswa": total_siswa,
         "total_hafalan": total_hafalan,
         "alert": alert,
+        "active_page": "dashboard",
     })
 
 
@@ -161,9 +229,10 @@ def admin_dashboard(request: Request):
 def admin_tambah_user(
     request: Request,
     nama: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
     role: str = Form(...),
+    nisn: Optional[str] = Form(None),
+    nuptk: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
 ):
     user = require_role(request, "admin")
     if not user:
@@ -172,15 +241,48 @@ def admin_tambah_user(
     if role not in ("guru", "siswa"):
         return RedirectResponse("/admin?alert=danger&msg=Role tidak valid", status_code=302)
 
-    existing = db_fetchone("SELECT id FROM users WHERE email = %s", (email,))
-    if existing:
-        return RedirectResponse("/admin?alert=danger&msg=Email sudah terdaftar", status_code=302)
+    # Validasi: siswa harus punya NISN, guru harus punya NUPTK
+    if role == "siswa":
+        if not nisn or not nisn.strip():
+            return RedirectResponse("/admin?alert=danger&msg=NISN wajib diisi untuk siswa", status_code=302)
+        nisn = nisn.strip()
+        nuptk = None
+        # Cek duplikat NISN
+        existing = db_fetchone("SELECT id FROM users WHERE nisn = %s", (nisn,))
+        if existing:
+            return RedirectResponse("/admin?alert=danger&msg=NISN sudah terdaftar", status_code=302)
+        # Password default = NISN
+        default_password = nisn
+
+    elif role == "guru":
+        if not nuptk or not nuptk.strip():
+            return RedirectResponse("/admin?alert=danger&msg=NUPTK wajib diisi untuk guru", status_code=302)
+        nuptk = nuptk.strip()
+        nisn = None
+        # Cek duplikat NUPTK
+        existing = db_fetchone("SELECT id FROM users WHERE nuptk = %s", (nuptk,))
+        if existing:
+            return RedirectResponse("/admin?alert=danger&msg=NUPTK sudah terdaftar", status_code=302)
+        # Password default = NUPTK
+        default_password = nuptk
+
+    # Email opsional — cek duplikat kalau diisi
+    email = email.strip() if email and email.strip() else None
+    if email:
+        existing = db_fetchone("SELECT id FROM users WHERE email = %s", (email,))
+        if existing:
+            return RedirectResponse("/admin?alert=danger&msg=Email sudah terdaftar", status_code=302)
 
     db_execute(
-        "INSERT INTO users (nama, email, password, role) VALUES (%s, %s, %s, %s)",
-        (nama, email, hash_password(password), role)
+        "INSERT INTO users (nama, nisn, nuptk, email, password, must_change_password, role) VALUES (%s, %s, %s, %s, %s, 1, %s)",
+        (nama, nisn, nuptk, email, hash_password(default_password), role)
     )
-    return RedirectResponse(f"/admin?alert=success&msg=User {nama} berhasil ditambahkan", status_code=302)
+
+    id_label = f"NISN: {nisn}" if role == "siswa" else f"NUPTK: {nuptk}"
+    return RedirectResponse(
+        f"/admin?alert=success&msg={nama} berhasil ditambahkan ({id_label}). Password default = {default_password}",
+        status_code=302
+    )
 
 
 @app.post("/admin/hapus-user/{user_id}")
@@ -202,49 +304,204 @@ def admin_hapus_user(request: Request, user_id: int):
     return RedirectResponse(f"/admin?alert=success&msg=User berhasil dihapus", status_code=302)
 
 
+@app.post("/admin/reset-password/{user_id}")
+def admin_reset_password(request: Request, user_id: int):
+    """Reset password user ke NISN/NUPTK dan paksa ganti password."""
+    user = require_role(request, "admin")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    target = db_fetchone("SELECT * FROM users WHERE id = %s", (user_id,))
+    if not target or target["role"] == "admin":
+        return RedirectResponse("/admin?alert=danger&msg=Tidak bisa reset user ini", status_code=302)
+
+    # Reset ke NISN atau NUPTK
+    if target["role"] == "siswa" and target.get("nisn"):
+        new_pw = target["nisn"]
+    elif target["role"] == "guru" and target.get("nuptk"):
+        new_pw = target["nuptk"]
+    else:
+        return RedirectResponse("/admin?alert=danger&msg=User tidak punya NISN/NUPTK", status_code=302)
+
+    db_execute(
+        "UPDATE users SET password = %s, must_change_password = 1 WHERE id = %s",
+        (hash_password(new_pw), user_id)
+    )
+    return RedirectResponse(
+        f"/admin?alert=success&msg=Password {target['nama']} direset. Password baru = {new_pw}",
+        status_code=302
+    )
+
+
 # ============================
 # GURU ROUTES
 # ============================
+WIB = timezone(timedelta(hours=7))
+
+
+def _get_alert(request: Request):
+    t = request.query_params.get("alert")
+    m = request.query_params.get("msg")
+    return {"type": t, "message": m} if t and m else None
+
+
 @app.get("/guru", response_class=HTMLResponse)
 def guru_dashboard(request: Request):
     user = require_role(request, "guru")
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    # Siswa dari MySQL, surah dari CSV
-    daftar_siswa = db_fetchall("SELECT id, nama FROM users WHERE role='siswa' ORDER BY nama")
-    daftar_surah = get_surah_list()  # ← dari CSV
+    now_wib = datetime.now(WIB)
+    today_str = now_wib.strftime("%Y-%m-%d")
 
-    # Log hafalan dari MySQL, nama surah di-inject dari CSV
-    logs_raw = db_fetchall("""
-        SELECT h.*, u.nama AS nama_siswa
-        FROM hafalan_log h
-        JOIN users u ON u.id = h.siswa_id
-        WHERE h.guru_id = %s
-        ORDER BY h.tanggal DESC, h.created_at DESC
-        LIMIT 50
-    """, (user["id"],))
+    lb_bulan = int(request.query_params.get("lb_bulan", now_wib.month))
+    lb_tahun = int(request.query_params.get("lb_tahun", now_wib.year))
 
-    logs = []
-    for log in logs_raw:
-        log["nama_surah"] = get_surah_name(log["surah_id"])
-        logs.append(log)
+    leaderboard_hari = db_fetchall("""
+        SELECT u.nama, SUM(h.jumlah_ayat) AS total_ayat, COUNT(h.id) AS total_setoran
+        FROM hafalan_log h JOIN users u ON u.id = h.siswa_id
+        WHERE h.tanggal = %s
+        GROUP BY h.siswa_id ORDER BY total_ayat DESC LIMIT 10
+    """, (today_str,))
 
-    alert = None
-    alert_type = request.query_params.get("alert")
-    alert_msg = request.query_params.get("msg")
-    if alert_type and alert_msg:
-        alert = {"type": alert_type, "message": alert_msg}
+    leaderboard_bulan = db_fetchall("""
+        SELECT u.nama, SUM(h.jumlah_ayat) AS total_ayat, COUNT(h.id) AS total_setoran,
+               COUNT(DISTINCT h.tanggal) AS hari_aktif
+        FROM hafalan_log h JOIN users u ON u.id = h.siswa_id
+        WHERE MONTH(h.tanggal) = %s AND YEAR(h.tanggal) = %s
+        GROUP BY h.siswa_id ORDER BY total_ayat DESC LIMIT 10
+    """, (lb_bulan, lb_tahun))
+
+    tahun_raw = db_fetchall("SELECT DISTINCT YEAR(tanggal) AS y FROM hafalan_log ORDER BY y DESC")
+    tahun_list = [r["y"] for r in tahun_raw] if tahun_raw else [now_wib.year]
 
     return templates.TemplateResponse("guru/dashboard.html", {
-        "request": request,
-        "user": user,
-        "daftar_siswa": daftar_siswa,
-        "daftar_surah": daftar_surah,
-        "logs": logs,
-        "today": date.today().isoformat(),
-        "alert": alert,
+        "request": request, "user": user, "alert": _get_alert(request),
+        "active_page": "dashboard",
+        "leaderboard_hari": leaderboard_hari, "leaderboard_bulan": leaderboard_bulan,
+        "lb_bulan": lb_bulan, "lb_tahun": lb_tahun,
+        "tahun_list": tahun_list, "today_str": today_str,
     })
+
+
+@app.get("/guru/input-hafalan", response_class=HTMLResponse)
+def guru_input_hafalan_page(request: Request):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    daftar_siswa = db_fetchall("SELECT id, nama FROM users WHERE role='siswa' ORDER BY nama")
+    daftar_surah = get_surah_list()
+
+    page = int(request.query_params.get("page", 1))
+    per_page = int(request.query_params.get("per_page", 10))
+    if per_page not in (10, 25, 50, 100, 250):
+        per_page = 10
+
+    total_row = db_fetchone("SELECT COUNT(*) AS c FROM hafalan_log WHERE guru_id = %s", (user["id"],))
+    total_logs = total_row["c"] if total_row else 0
+    total_pages = max(1, (total_logs + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    offset = (page - 1) * per_page
+
+    logs_raw = db_fetchall("""
+        SELECT h.*, u.nama AS nama_siswa FROM hafalan_log h
+        JOIN users u ON u.id = h.siswa_id
+        WHERE h.guru_id = %s ORDER BY h.tanggal DESC, h.created_at DESC
+        LIMIT %s OFFSET %s
+    """, (user["id"], per_page, offset))
+
+    logs = [{**log, "nama_surah": get_surah_name(log["surah_id"])} for log in logs_raw]
+
+    return templates.TemplateResponse("guru/input_hafalan.html", {
+        "request": request, "user": user, "alert": _get_alert(request),
+        "active_page": "input_hafalan",
+        "daftar_siswa": daftar_siswa, "daftar_surah": daftar_surah,
+        "logs": logs, "page": page, "per_page": per_page,
+        "total_logs": total_logs, "total_pages": total_pages,
+    })
+
+
+@app.get("/guru/data-pribadi", response_class=HTMLResponse)
+def guru_data_pribadi(request: Request):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    db_user = db_fetchone("SELECT * FROM users WHERE id = %s", (user["id"],))
+    return templates.TemplateResponse("guru/data_pribadi.html", {
+        "request": request, "user": user, "db_user": db_user,
+        "alert": _get_alert(request), "active_page": "data_pribadi",
+    })
+
+
+@app.post("/guru/data-pribadi")
+def guru_data_pribadi_post(
+    request: Request,
+    provinsi: Optional[str] = Form(None),
+    kabupaten: Optional[str] = Form(None),
+    kecamatan: Optional[str] = Form(None),
+    kelurahan: Optional[str] = Form(None),
+    alamat_detail: Optional[str] = Form(None),
+):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    db_execute("""
+        UPDATE users SET provinsi=%s, kabupaten=%s, kecamatan=%s, kelurahan=%s, alamat_detail=%s
+        WHERE id=%s
+    """, (
+        provinsi or None, kabupaten or None, kecamatan or None,
+        kelurahan or None, alamat_detail or None, user["id"]
+    ))
+    return RedirectResponse("/guru/data-pribadi?alert=success&msg=Data pribadi berhasil disimpan", status_code=302)
+
+
+@app.get("/guru/ubah-password", response_class=HTMLResponse)
+def guru_ubah_password(request: Request):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    return templates.TemplateResponse("guru/ubah_password.html", {
+        "request": request, "user": user,
+        "alert": _get_alert(request), "active_page": "ubah_password",
+    })
+
+
+@app.post("/guru/ubah-password")
+def guru_ubah_password_post(
+    request: Request,
+    password_lama: str = Form(...),
+    password_baru: str = Form(...),
+    konfirmasi: str = Form(...),
+):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    db_user = db_fetchone("SELECT password FROM users WHERE id = %s", (user["id"],))
+    if db_user["password"] != hash_password(password_lama):
+        return templates.TemplateResponse("guru/ubah_password.html", {
+            "request": request, "user": user, "active_page": "ubah_password",
+            "alert": {"type": "danger", "message": "Password lama salah"},
+        })
+
+    if len(password_baru) < 6:
+        return templates.TemplateResponse("guru/ubah_password.html", {
+            "request": request, "user": user, "active_page": "ubah_password",
+            "alert": {"type": "danger", "message": "Password baru minimal 6 karakter"},
+        })
+
+    if password_baru != konfirmasi:
+        return templates.TemplateResponse("guru/ubah_password.html", {
+            "request": request, "user": user, "active_page": "ubah_password",
+            "alert": {"type": "danger", "message": "Konfirmasi password tidak cocok"},
+        })
+
+    db_execute("UPDATE users SET password = %s WHERE id = %s", (hash_password(password_baru), user["id"]))
+    return RedirectResponse("/guru/ubah-password?alert=success&msg=Password berhasil diubah", status_code=302)
 
 
 @app.post("/guru/input-hafalan")
@@ -254,35 +511,72 @@ def guru_input_hafalan(
     surah_id: int = Form(...),
     ayat_mulai: int = Form(...),
     ayat_selesai: int = Form(...),
-    tanggal: str = Form(...),
+    catatan: Optional[str] = Form(None),
 ):
     user = require_role(request, "guru")
     if not user:
         return RedirectResponse("/login", status_code=302)
 
     if ayat_selesai < ayat_mulai:
-        return RedirectResponse("/guru?alert=danger&msg=Ayat selesai harus >= ayat mulai", status_code=302)
+        return RedirectResponse("/guru/input-hafalan?alert=danger&msg=Ayat selesai harus >= ayat mulai", status_code=302)
 
-    # Validasi surah dari CSV
     surah = get_surah(surah_id)
     if not surah:
-        return RedirectResponse("/guru?alert=danger&msg=Surah tidak ditemukan", status_code=302)
+        return RedirectResponse("/guru/input-hafalan?alert=danger&msg=Surah tidak ditemukan", status_code=302)
 
     if ayat_mulai < 1 or ayat_selesai > surah["jumlah_ayat"]:
         return RedirectResponse(
-            f"/guru?alert=danger&msg=Ayat harus antara 1 - {surah['jumlah_ayat']}",
+            f"/guru/input-hafalan?alert=danger&msg=Ayat harus antara 1 - {surah['jumlah_ayat']}",
             status_code=302
         )
 
     jumlah = ayat_selesai - ayat_mulai + 1
+    tanggal = datetime.now(WIB).strftime("%Y-%m-%d")
 
-    # Simpan ke MySQL
     db_execute(
-        "INSERT INTO hafalan_log (siswa_id, guru_id, surah_id, ayat_mulai, ayat_selesai, jumlah_ayat, tanggal) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (siswa_id, user["id"], surah_id, ayat_mulai, ayat_selesai, jumlah, tanggal)
+        "INSERT INTO hafalan_log (siswa_id, guru_id, surah_id, ayat_mulai, ayat_selesai, jumlah_ayat, catatan, tanggal) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        (siswa_id, user["id"], surah_id, ayat_mulai, ayat_selesai, jumlah, catatan or None, tanggal)
     )
+    return RedirectResponse(f"/guru/input-hafalan?alert=success&msg=Hafalan berhasil disimpan ({jumlah} ayat)", status_code=302)
 
-    return RedirectResponse(f"/guru?alert=success&msg=Hafalan berhasil disimpan ({jumlah} ayat)", status_code=302)
+
+@app.post("/guru/edit-hafalan/{log_id}")
+def guru_edit_hafalan(
+    request: Request,
+    log_id: int,
+    surah_id: int = Form(...),
+    ayat_mulai: int = Form(...),
+    ayat_selesai: int = Form(...),
+    catatan: Optional[str] = Form(None),
+):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    # Pastikan log ini milik guru yang login
+    log = db_fetchone("SELECT * FROM hafalan_log WHERE id = %s AND guru_id = %s", (log_id, user["id"]))
+    if not log:
+        return RedirectResponse("/guru/input-hafalan?alert=danger&msg=Log tidak ditemukan atau bukan milik Anda", status_code=302)
+
+    if ayat_selesai < ayat_mulai:
+        return RedirectResponse("/guru/input-hafalan?alert=danger&msg=Ayat selesai harus >= ayat mulai", status_code=302)
+
+    surah = get_surah(surah_id)
+    if not surah:
+        return RedirectResponse("/guru/input-hafalan?alert=danger&msg=Surah tidak valid", status_code=302)
+
+    if ayat_mulai < 1 or ayat_selesai > surah["jumlah_ayat"]:
+        return RedirectResponse(
+            f"/guru/input-hafalan?alert=danger&msg=Ayat harus antara 1 - {surah['jumlah_ayat']}",
+            status_code=302
+        )
+
+    jumlah = ayat_selesai - ayat_mulai + 1
+    db_execute(
+        "UPDATE hafalan_log SET surah_id=%s, ayat_mulai=%s, ayat_selesai=%s, jumlah_ayat=%s, catatan=%s WHERE id=%s",
+        (surah_id, ayat_mulai, ayat_selesai, jumlah, catatan or None, log_id)
+    )
+    return RedirectResponse(f"/guru/input-hafalan?alert=success&msg=Log hafalan berhasil diperbarui", status_code=302)
 
 
 # ============================
@@ -457,7 +751,93 @@ def siswa_dashboard(request: Request):
         # Filter data for AI predictions
         "ai_filter_surah": ai_filter_surah,
         "ai_surah_options": ai_surah_options,
+        "active_page": "dashboard",
     })
+
+
+# ============================
+# SISWA — DATA PRIBADI & UBAH PASSWORD
+# ============================
+@app.get("/siswa/data-pribadi", response_class=HTMLResponse)
+def siswa_data_pribadi(request: Request):
+    user = require_role(request, "siswa")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    db_user = db_fetchone("SELECT * FROM users WHERE id = %s", (user["id"],))
+    return templates.TemplateResponse("siswa/data_pribadi.html", {
+        "request": request, "user": user, "db_user": db_user,
+        "alert": _get_alert(request), "active_page": "data_pribadi",
+    })
+
+
+@app.post("/siswa/data-pribadi")
+def siswa_data_pribadi_post(
+    request: Request,
+    provinsi: Optional[str] = Form(None),
+    kabupaten: Optional[str] = Form(None),
+    kecamatan: Optional[str] = Form(None),
+    kelurahan: Optional[str] = Form(None),
+    alamat_detail: Optional[str] = Form(None),
+):
+    user = require_role(request, "siswa")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    db_execute("""
+        UPDATE users SET provinsi=%s, kabupaten=%s, kecamatan=%s, kelurahan=%s, alamat_detail=%s
+        WHERE id=%s
+    """, (
+        provinsi or None, kabupaten or None, kecamatan or None,
+        kelurahan or None, alamat_detail or None, user["id"]
+    ))
+    return RedirectResponse("/siswa/data-pribadi?alert=success&msg=Data pribadi berhasil disimpan", status_code=302)
+
+
+@app.get("/siswa/ubah-password", response_class=HTMLResponse)
+def siswa_ubah_password(request: Request):
+    user = require_role(request, "siswa")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    return templates.TemplateResponse("siswa/ubah_password.html", {
+        "request": request, "user": user,
+        "alert": _get_alert(request), "active_page": "ubah_password",
+    })
+
+
+@app.post("/siswa/ubah-password")
+def siswa_ubah_password_post(
+    request: Request,
+    password_lama: str = Form(...),
+    password_baru: str = Form(...),
+    konfirmasi: str = Form(...),
+):
+    user = require_role(request, "siswa")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    db_user = db_fetchone("SELECT password FROM users WHERE id = %s", (user["id"],))
+    if db_user["password"] != hash_password(password_lama):
+        return templates.TemplateResponse("siswa/ubah_password.html", {
+            "request": request, "user": user, "active_page": "ubah_password",
+            "alert": {"type": "danger", "message": "Password lama salah"},
+        })
+
+    if len(password_baru) < 6:
+        return templates.TemplateResponse("siswa/ubah_password.html", {
+            "request": request, "user": user, "active_page": "ubah_password",
+            "alert": {"type": "danger", "message": "Password baru minimal 6 karakter"},
+        })
+
+    if password_baru != konfirmasi:
+        return templates.TemplateResponse("siswa/ubah_password.html", {
+            "request": request, "user": user, "active_page": "ubah_password",
+            "alert": {"type": "danger", "message": "Konfirmasi password tidak cocok"},
+        })
+
+    db_execute("UPDATE users SET password = %s WHERE id = %s", (hash_password(password_baru), user["id"]))
+    return RedirectResponse("/siswa/ubah-password?alert=success&msg=Password berhasil diubah", status_code=302)
 
 
 # ============================
