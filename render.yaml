@@ -1,0 +1,28 @@
+services:
+  # Web Service
+  - type: web
+    name: quran-hafalan-app
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quran-hafalan-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: 10000
+
+databases:
+  # MySQL Database
+  - name: quran-hafalan-db
+    databaseName: quran_hafalan
+    user: quran_user
+    plan: free
+    region: singapore

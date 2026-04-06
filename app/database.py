@@ -2,19 +2,37 @@ import pymysql
 import hashlib
 import pandas as pd
 import os
+from urllib.parse import urlparse
 
 # ============================
-# CONFIG MySQL (XAMPP)
+# CONFIG MySQL
 # ============================
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "",
-    "database": "quran_hafalan",
-    "port": 3306,
-    "cursorclass": pymysql.cursors.DictCursor,
-    "autocommit": False,
-}
+# Support both local development and production (Render)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    # Production: parse DATABASE_URL from Render
+    url = urlparse(DATABASE_URL)
+    DB_CONFIG = {
+        "host": url.hostname,
+        "user": url.username,
+        "password": url.password,
+        "database": url.path[1:],  # Remove leading slash
+        "port": url.port or 3306,
+        "cursorclass": pymysql.cursors.DictCursor,
+        "autocommit": False,
+    }
+else:
+    # Local development: XAMPP
+    DB_CONFIG = {
+        "host": os.getenv("DB_HOST", "localhost"),
+        "user": os.getenv("DB_USER", "root"),
+        "password": os.getenv("DB_PASSWORD", ""),
+        "database": os.getenv("DB_NAME", "quran_hafalan"),
+        "port": int(os.getenv("DB_PORT", "3306")),
+        "cursorclass": pymysql.cursors.DictCursor,
+        "autocommit": False,
+    }
 
 # ============================
 # DATA QURAN — dari CSV, di-load sekali ke memory

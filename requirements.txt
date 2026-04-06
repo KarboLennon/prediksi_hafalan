@@ -1,5 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 pandas
 scikit-learn
 joblib
@@ -11,3 +11,5 @@ seaborn
 jinja2
 python-multipart
 pymysql
+gunicorn
+cryptography

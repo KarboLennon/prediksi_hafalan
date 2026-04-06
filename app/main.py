@@ -16,12 +16,14 @@ from app.database import (
 from typing import Optional
 from app.predictor import prediksi_hafalan
 import app.database as db_module
+import os
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-SECRET = "quran-hafalan-secret-key-2024"
+# Use environment variable for secret key in production
+SECRET = os.getenv("SECRET_KEY", "quran-hafalan-secret-key-2024-dev-only")
 
 
 # ============================
