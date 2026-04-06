@@ -10,19 +10,20 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-      - key: DATABASE_URL
-        fromDatabase:
-          name: quran-hafalan-db
-          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: PORT
         value: 10000
+      # Database credentials from PlanetScale
+      # Set these manually in Render dashboard after getting from PlanetScale
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: quran-hafalan
+      - key: DB_PORT
+        value: 3306
 
-databases:
-  # MySQL Database
-  - name: quran-hafalan-db
-    databaseName: quran_hafalan
-    user: quran_user
-    plan: free
-    region: singapore
