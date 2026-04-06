@@ -1,205 +1,252 @@
-# Deployment Guide - Render.com + PlanetScale MySQL
+# Deployment Guide - Railway.app
 
 ## Prerequisites
 1. GitHub account
-2. Render.com account (free)
-3. PlanetScale account (free) - untuk MySQL database
-4. Push project ke GitHub repository
+2. Railway.app account (free $5 credit/month)
+3. Push project ke GitHub repository
 
 ## Step-by-Step Deployment
 
-### 1. Setup PlanetScale MySQL Database (Free)
-
-#### A. Create PlanetScale Account
-1. Buka [PlanetScale](https://planetscale.com)
-2. Sign up dengan GitHub (gratis)
-3. Verify email
-
-#### B. Create Database
-1. Click "Create a database"
-2. Settings:
-   - Name: `quran-hafalan`
-   - Region: `AWS ap-southeast-1` (Singapore)
-   - Plan: Hobby (Free)
-3. Click "Create database"
-4. Wait sampai status "Ready"
-
-#### C. Create Password
-1. Di database dashboard, click "Connect"
-2. Click "New password"
-3. Name: `render-app`
-4. Click "Create password"
-5. **PENTING**: Copy semua credentials (host, username, password)
-   - Host: `xxx.aws.connect.psdb.cloud`
-   - Username: `xxx`
-   - Password: `pscale_pw_xxx`
-   - Database: `quran-hafalan`
-6. Atau copy "Connection string" format: 
-   ```
-   mysql://username:password@host/database?sslaccept=strict
-   ```
-
-#### D. Import Database Schema
-1. Install PlanetScale CLI (optional) atau pakai web console
-2. Via Web Console:
-   - Click "Console" tab
-   - Copy-paste isi file `database/schema.sql`
-   - Run query
-3. Via MySQL Client:
-   ```bash
-   mysql -h xxx.aws.connect.psdb.cloud -u username -p database < database/schema.sql
-   ```
-
-### 2. Push ke GitHub
+### 1. Push ke GitHub
 ```bash
 git init
 git add .
-git commit -m "Setup for Render + PlanetScale deployment"
+git commit -m "Setup for Railway deployment"
 git remote add origin https://github.com/username/repo-name.git
 git push -u origin main
 ```
 
-### 3. Setup di Render.com
+### 2. Setup Railway Account
+1. Buka [Railway.app](https://railway.app)
+2. Click "Login" → Sign in with GitHub
+3. Authorize Railway
+4. Verify email kalau diminta
 
-#### A. Create Web Service
-1. Login ke [Render Dashboard](https://dashboard.render.com)
-2. Click "New +" → "Web Service"
-3. Connect GitHub repository
-4. Settings:
-   - Name: `quran-hafalan-app`
-   - Region: Singapore
-   - Branch: `main`
-   - Root Directory: (kosongkan)
-   - Runtime: Python 3
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `bash start.sh`
-   - Plan: Free
+### 3. Create New Project
 
-#### B. Environment Variables
-Click "Add Environment Variable" untuk setiap variable:
+#### A. Create Project
+1. Di Railway dashboard, click "New Project"
+2. Pilih "Deploy from GitHub repo"
+3. Select repository project lu
+4. Railway akan auto-detect Python project
 
-1. `PYTHON_VERSION` = `3.11.0`
+#### B. Add MySQL Database
+1. Di project dashboard, click "New" → "Database" → "Add MySQL"
+2. Railway akan auto-provision MySQL database
+3. Wait sampai status "Active" (1-2 menit)
 
-2. `DATABASE_URL` = (paste connection string dari PlanetScale)
-   Format: `mysql://username:password@host/database?ssl={"rejectUnauthorized":true}`
-   
-   Atau set individual:
-   - `DB_HOST` = `xxx.aws.connect.psdb.cloud`
-   - `DB_USER` = `username dari PlanetScale`
-   - `DB_PASSWORD` = `password dari PlanetScale`
-   - `DB_NAME` = `quran-hafalan`
-   - `DB_PORT` = `3306`
+#### C. Configure Environment Variables
+1. Click service app lu (bukan database)
+2. Tab "Variables"
+3. Click "Add Variable" atau "Raw Editor"
+4. Add variables berikut:
 
-3. `SECRET_KEY` = (generate random string)
-   ```bash
-   # Generate via terminal:
-   python -c "import secrets; print(secrets.token_hex(32))"
-   ```
+```env
+# Python version
+PYTHON_VERSION=3.11.0
 
-4. Click "Create Web Service"
+# Secret key (generate random)
+SECRET_KEY=your-random-secret-key-here
 
-### 4. Wait for Deployment
-- First deploy: 5-10 menit
-- Check logs untuk error
-- Kalau sukses: `https://quran-hafalan-app.onrender.com`
+# Database akan auto-inject oleh Railway sebagai DATABASE_URL
+# Tapi kita perlu individual vars juga untuk compatibility
+```
 
-### 5. Setup Admin User
-Setelah deploy sukses, buat admin via PlanetScale Console:
+Railway akan otomatis inject variable `DATABASE_URL` dari MySQL service.
+
+#### D. Configure Build & Start
+1. Masih di service app, tab "Settings"
+2. Scroll ke "Build & Deploy"
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+Atau bisa pakai Gunicorn (lebih production-ready):
+```
+gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+```
+
+### 4. Deploy
+1. Railway akan auto-deploy setelah setup
+2. Check tab "Deployments" untuk status
+3. Kalau ada error, check "View Logs"
+4. Kalau sukses, akan dapat URL: `https://xxx.up.railway.app`
+
+### 5. Import Database Schema
+
+#### Via Railway MySQL Client
+1. Di project dashboard, click MySQL database
+2. Tab "Data"
+3. Click "Query" atau connect via MySQL client
+4. Copy-paste isi `database/schema.sql`
+5. Execute
+
+#### Via MySQL Workbench/CLI
+1. Di MySQL service, tab "Connect"
+2. Copy credentials:
+   - Host: `xxx.railway.internal` atau public host
+   - Port: `3306`
+   - User: `root`
+   - Password: (dari Railway)
+   - Database: `railway`
+3. Connect dan import schema:
+```bash
+mysql -h host -P port -u root -p railway < database/schema.sql
+```
+
+### 6. Create Admin User
+Via Railway MySQL Query tab:
 ```sql
 INSERT INTO users (nama, email, password, role, must_change_password) 
 VALUES ('Admin', 'admin@example.com', SHA2('admin123', 256), 'admin', 0);
 ```
 
+### 7. Enable Public Domain
+1. Di service app, tab "Settings"
+2. Scroll ke "Networking"
+3. Click "Generate Domain"
+4. Akan dapat public URL: `https://your-app.up.railway.app`
+
 ## Important Notes
 
-### Free Tier Limitations
+### Free Tier ($5 Credit/Month)
+- $5 credit = ~500 jam runtime
+- Cukup untuk 1 app + 1 database 24/7 (~$3-4/month)
+- No credit card required untuk trial
+- Setelah credit habis, service akan pause
 
-**PlanetScale (MySQL):**
-- 5GB storage
-- 1 billion row reads/month
-- 10 million row writes/month
-- 1 production branch + 1 development branch
-- Cukup untuk project skripsi/demo
-
-**Render (Web Service):**
-- Auto-sleep setelah 15 menit idle
-- Cold start: 30-60 detik
-- 750 jam/bulan (cukup 24/7)
+### Usage Estimation
+- Web service: ~$0.002/hour = ~$1.50/month
+- MySQL: ~$0.003/hour = ~$2.20/month
+- Total: ~$3.70/month (masih dalam $5 credit)
 
 ### Production Checklist
-- ✅ PlanetScale database created
+- ✅ GitHub repo connected
+- ✅ MySQL database created
+- ✅ Environment variables set
 - ✅ Database schema imported
-- ✅ Connection string copied
-- ✅ Environment variables configured di Render
 - ✅ Admin user created
-- ✅ App deployed successfully
+- ✅ Public domain generated
+- ✅ App accessible via URL
 
 ### Troubleshooting
 
 **Error: Can't connect to database**
-- Check DATABASE_URL format benar
-- Pastikan SSL enabled: `?ssl={"rejectUnauthorized":true}`
-- Cek PlanetScale password belum expired
-- Test connection via MySQL client dulu
-
-**Error: SSL connection error**
-- PlanetScale require SSL
-- Pastikan pymysql support SSL (sudah include di requirements.txt)
-- Add `ssl={"rejectUnauthorized":true}` di connection string
+- Railway auto-inject `DATABASE_URL` variable
+- Check di tab "Variables" ada `DATABASE_URL`
+- Format: `mysql://root:password@host:port/railway`
+- Pastikan app dan database dalam 1 project
 
 **Error: Module not found**
-- Check requirements.txt lengkap
-- Rebuild service di Render dashboard
+- Check requirements.txt complete
+- Rebuild: Tab "Deployments" → click "..." → "Redeploy"
 
-**App sleep/cold start**
-- Free tier auto-sleep setelah 15 menit
-- Upgrade ke paid ($7/month) untuk always-on
-- Atau pakai cron job untuk ping setiap 10 menit
+**Error: Port binding**
+- Railway inject `PORT` variable otomatis
+- Pastikan app listen di `0.0.0.0:$PORT`
+- Jangan hardcode port 8000
 
-**PlanetScale connection limit**
-- Free tier: 1000 concurrent connections
-- Kalau exceed, upgrade atau optimize connection pooling
+**App not accessible**
+- Check "Generate Domain" sudah diklik
+- Check deployment status "Success"
+- Check logs untuk error
 
-## Monitoring
+**Database connection timeout**
+- Railway database bisa sleep kalau idle
+- Add connection retry logic
+- Atau upgrade ke paid plan
 
-### Render
-- Logs: Dashboard → Service → Logs
-- Metrics: Dashboard → Service → Metrics
+### Monitoring
 
-### PlanetScale
-- Dashboard → Database → Insights
+**Metrics**
+- Dashboard → Service → "Metrics" tab
+- Monitor CPU, RAM, Network usage
+- Track credit usage
+
+**Logs**
+- Dashboard → Service → "Deployments" → "View Logs"
+- Real-time logs untuk debugging
+
+**Database**
+- Dashboard → MySQL → "Metrics"
 - Monitor queries, connections, storage
 
-## Custom Domain (Optional)
-1. Render Dashboard → Service → Settings
-2. "Custom Domain" → Add domain
-3. Update DNS records
+### Custom Domain (Optional)
+1. Service → Settings → Networking
+2. "Custom Domain" → Add your domain
+3. Update DNS records:
+   - Type: CNAME
+   - Name: subdomain
+   - Value: your-app.up.railway.app
 
-## Upgrade Plans
+### Upgrade to Paid Plan
+Kalau $5 credit gak cukup:
+- Hobby Plan: $5/month + usage
+- Pro Plan: $20/month + usage
+- Usage: ~$0.002/hour untuk web service
 
-### Render Web Service
-- Starter: $7/month (512MB RAM, always-on)
-- Standard: $25/month (2GB RAM)
+### Tips
 
-### PlanetScale Database
-- Scaler: $29/month (10GB storage, unlimited reads/writes)
-- Scaler Pro: $59/month (100GB storage)
+1. **Monitor Credit Usage**:
+   - Check dashboard regularly
+   - Set up usage alerts
+   - Optimize resource usage
 
-## Tips
+2. **Database Backup**:
+   - Railway auto-backup (paid plan)
+   - Manual backup via mysqldump:
+     ```bash
+     mysqldump -h host -u root -p railway > backup.sql
+     ```
 
-1. **Keep PlanetScale connection alive**: 
-   - Set connection timeout di pymysql
-   - Implement connection retry logic
+3. **Environment-specific Config**:
+   - Use Railway variables untuk production
+   - Keep .env untuk local development
 
-2. **Monitor usage**:
-   - Check PlanetScale dashboard untuk row reads/writes
-   - Free tier cukup untuk 1000+ users
+4. **Optimize Costs**:
+   - Use 1 worker untuk Gunicorn (free tier)
+   - Implement connection pooling
+   - Cache static assets
 
-3. **Backup**:
-   - PlanetScale auto-backup (7 days retention di free tier)
-   - Export manual via mysqldump kalau perlu
+5. **CI/CD**:
+   - Railway auto-deploy on git push
+   - Configure branch deployment di Settings
+   - Use PR deployments untuk testing
 
-4. **Development**:
-   - Pakai PlanetScale development branch untuk testing
-   - Merge ke production branch setelah tested
+## Alternative: Railway CLI
+
+Install Railway CLI untuk deploy via terminal:
+```bash
+# Install
+npm i -g @railway/cli
+
+# Login
+railway login
+
+# Link project
+railway link
+
+# Deploy
+railway up
+
+# View logs
+railway logs
+
+# Open in browser
+railway open
+```
+
+## Next Steps After Deployment
+
+1. Test semua fitur (login, input hafalan, dashboard, dll)
+2. Monitor logs untuk error
+3. Check database connection stable
+4. Test ML prediction working
+5. Share URL untuk testing
+6. Monitor credit usage
+
+## Support
+- Docs: https://docs.railway.app
+- Discord: https://discord.gg/railway
+- Status: https://status.railway.app
+
 

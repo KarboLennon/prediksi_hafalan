@@ -7,11 +7,12 @@ from urllib.parse import urlparse
 # ============================
 # CONFIG MySQL
 # ============================
-# Support both local development and production (PlanetScale)
+# Support both local development and production (Railway)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # Production: parse DATABASE_URL
+    # Production: parse DATABASE_URL from Railway
+    # Railway format: mysql://root:password@host:port/railway
     url = urlparse(DATABASE_URL)
     DB_CONFIG = {
         "host": url.hostname,
@@ -21,12 +22,9 @@ if DATABASE_URL:
         "port": url.port or 3306,
         "cursorclass": pymysql.cursors.DictCursor,
         "autocommit": False,
-        "ssl": {"rejectUnauthorized": True},  # Required for PlanetScale
-        "ssl_verify_cert": True,
-        "ssl_verify_identity": True,
     }
 else:
-    # Local development or individual env vars
+    # Local development: XAMPP or individual env vars
     DB_CONFIG = {
         "host": os.getenv("DB_HOST", "localhost"),
         "user": os.getenv("DB_USER", "root"),
@@ -36,12 +34,6 @@ else:
         "cursorclass": pymysql.cursors.DictCursor,
         "autocommit": False,
     }
-    
-    # Add SSL for PlanetScale if using individual env vars
-    if os.getenv("DB_HOST") and "psdb.cloud" in os.getenv("DB_HOST", ""):
-        DB_CONFIG["ssl"] = {"rejectUnauthorized": True}
-        DB_CONFIG["ssl_verify_cert"] = True
-        DB_CONFIG["ssl_verify_identity"] = True
 
 # ============================
 # DATA QURAN — dari CSV, di-load sekali ke memory
