@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hafalan Monitoring{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', path='/gambar/favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', path='/gambar/favicon-32.png') }}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', path='/gambar/favicon-192.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -517,6 +521,12 @@
             <li><a href="/guru/input-hafalan" class="{% if active_page == 'input_hafalan' %}active{% endif %}">
                 <i class="fas fa-pen-to-square"></i> Input Hafalan
             </a></li>
+            <li><a href="/guru/daftar-siswa" class="{% if active_page == 'daftar_siswa' %}active{% endif %}">
+                <i class="fas fa-users"></i> Daftar Siswa
+            </a></li>
+            <li><a href="/guru/rekap" class="{% if active_page == 'rekap' %}active{% endif %}">
+                <i class="fas fa-file-lines"></i> Rekap Hafalan
+            </a></li>
             <li><a href="/guru/data-pribadi" class="{% if active_page == 'data_pribadi' %}active{% endif %}">
                 <i class="fas fa-user-circle"></i> Data Pribadi
             </a></li>
@@ -526,6 +536,9 @@
             {% elif user.role == 'siswa' %}
             <li><a href="/siswa" class="{% if active_page == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-chart-bar"></i> Dashboard
+            </a></li>
+            <li><a href="/siswa/rekap" class="{% if active_page == 'rekap' %}active{% endif %}">
+                <i class="fas fa-file-lines"></i> Rekap Hafalan
             </a></li>
             <li><a href="/siswa/data-pribadi" class="{% if active_page == 'data_pribadi' %}active{% endif %}">
                 <i class="fas fa-user-circle"></i> Data Pribadi

@@ -33,7 +33,7 @@
                     </thead>
                     <tbody>
                         {% for lb in leaderboard_hari %}
-                        <tr>
+                        <tr style="cursor:pointer;" onclick="window.location='/guru/siswa/{{ lb.siswa_id }}'">
                             <td style="text-align:center;">
                                 {% if loop.index == 1 %}<span style="font-size:1.2rem;">🥇</span>
                                 {% elif loop.index == 2 %}<span style="font-size:1.2rem;">🥈</span>
@@ -41,7 +41,11 @@
                                 {% else %}<span style="color:var(--c-neutral); font-weight:600;">{{ loop.index }}</span>
                                 {% endif %}
                             </td>
-                            <td style="font-weight:600;">{{ lb.nama }}</td>
+                            <td style="font-weight:600;">
+                                <a href="/guru/siswa/{{ lb.siswa_id }}" style="color:inherit; text-decoration:none;">
+                                    {{ lb.nama }}
+                                </a>
+                            </td>
                             <td style="text-align:center;">
                                 <span class="tag dark">{{ lb.total_ayat }} ayat</span>
                             </td>
@@ -113,7 +117,7 @@
                     </thead>
                     <tbody>
                         {% for lb in leaderboard_bulan %}
-                        <tr>
+                        <tr style="cursor:pointer;" onclick="window.location='/guru/siswa/{{ lb.siswa_id }}'">
                             <td style="text-align:center;">
                                 {% if loop.index == 1 %}<span style="font-size:1.2rem;">🥇</span>
                                 {% elif loop.index == 2 %}<span style="font-size:1.2rem;">🥈</span>
@@ -121,7 +125,11 @@
                                 {% else %}<span style="color:var(--c-neutral); font-weight:600;">{{ loop.index }}</span>
                                 {% endif %}
                             </td>
-                            <td style="font-weight:600;">{{ lb.nama }}</td>
+                            <td style="font-weight:600;">
+                                <a href="/guru/siswa/{{ lb.siswa_id }}" style="color:inherit; text-decoration:none;">
+                                    {{ lb.nama }}
+                                </a>
+                            </td>
                             <td style="text-align:center;">
                                 <span class="tag dark">{{ lb.total_ayat }} ayat</span>
                             </td>

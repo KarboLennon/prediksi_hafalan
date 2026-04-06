@@ -9,7 +9,7 @@
 
 <!-- Stat Cards -->
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-6 col-md-3">
         <div class="app-card">
             <div class="stat-card">
                 <div class="stat-icon dark"><i class="fas fa-book-open"></i></div>
@@ -18,7 +18,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-6 col-md-3">
         <div class="app-card">
             <div class="stat-card">
                 <div class="stat-icon dark"><i class="fas fa-list"></i></div>
@@ -27,7 +27,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-6 col-md-3">
         <div class="app-card">
             <div class="stat-card">
                 <div class="stat-icon accent"><i class="fas fa-calendar-check"></i></div>
@@ -36,7 +36,63 @@
             </div>
         </div>
     </div>
+    <div class="col-6 col-md-3">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--c-accent);"><i class="fas fa-star" style="color:var(--c-primary);"></i></div>
+                <div class="stat-val">
+                    {% if avg_rating > 0 %}
+                    {{ avg_rating }}
+                    <span style="font-size:.75rem; color:var(--c-neutral); font-weight:500;">/5</span>
+                    {% else %}—{% endif %}
+                </div>
+                <p class="stat-label">Rata-rata Rating</p>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Hafalan Selesai -->
+{% if surah_selesai %}
+<div class="app-card mb-4">
+    <div class="app-card-header" style="background:#166534; color:var(--c-white);">
+        <h2 style="color:var(--c-white);">&#9989; Hafalan Selesai</h2>
+        <p style="color:rgba(255,255,255,.75);">Surah yang sudah selesai dihafal</p>
+    </div>
+    <div class="app-card-body p-none">
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Surah</th>
+                        <th style="text-align:center;">Jumlah Ayat</th>
+                        <th style="text-align:center;">Rating Terakhir</th>
+                        <th style="text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in surah_selesai %}
+                    <tr>
+                        <td style="font-weight:600;">{{ s.nama_surah }}</td>
+                        <td style="text-align:center;"><span class="tag dark">{{ s.total_ayat }} ayat</span></td>
+                        <td style="text-align:center; white-space:nowrap;">
+                            {% if s.last_rating > 0 %}
+                            {% for i in range(1, 6) %}
+                            <i class="fas fa-star" style="font-size:12px; color:{% if i <= s.last_rating %}#FFC107{% else %}#e2e8f0{% endif %};"></i>
+                            {% endfor %}
+                            {% else %}
+                            <span style="color:var(--c-neutral); font-size:12px;">Belum dinilai</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;"><span class="tag accent" style="font-weight:600;">Selesai</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- AI Estimation Section -->
 {% if prediksi_list or ai_filter_surah %}
@@ -284,6 +340,7 @@
                         <th>Surah</th>
                         <th>Ayat</th>
                         <th style="text-align:center;">Jumlah</th>
+                        <th style="text-align:center;">Rating</th>
                         <th>Guru</th>
                     </tr>
                 </thead>
@@ -294,6 +351,15 @@
                         <td><span class="tag dark">{{ log.nama_surah }}</span></td>
                         <td style="color:var(--c-neutral);">{{ log.ayat_mulai }}–{{ log.ayat_selesai }}</td>
                         <td style="text-align:center;"><span class="tag accent">{{ log.jumlah_ayat }} ayat</span></td>
+                        <td style="text-align:center; white-space:nowrap;">
+                            {% if log.rating and log.rating > 0 %}
+                            {% for i in range(1, 6) %}
+                            <i class="fas fa-star" style="font-size:11px; color:{% if i <= log.rating %}#FFC107{% else %}#e2e8f0{% endif %};"></i>
+                            {% endfor %}
+                            {% else %}
+                            <span style="color:var(--c-neutral); font-size:11px;">—</span>
+                            {% endif %}
+                        </td>
                         <td style="color:var(--c-neutral);">{{ log.nama_guru }}</td>
                     </tr>
                     {% endfor %}

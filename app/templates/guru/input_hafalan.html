@@ -18,22 +18,26 @@
             <div class="app-card-body">
                 <form method="POST" action="/guru/input-hafalan" id="formHafalan">
 
-                    <!-- Pilih Siswa -->
+                    <!-- Pilih Siswa (Autocomplete) -->
                     <div class="mb-3">
-                        <label class="form-label">Pilih Siswa</label>
-                        <div class="input-group mb-2">
-                            <span class="input-group-text">
-                                <i class="fas fa-search"></i>
-                            </span>
-                            <input type="text" id="siswaSearch" class="form-control"
-                                   placeholder="Cari nama siswa...">
+                        <label class="form-label">Pilih Siswa <span style="color:#dc3545;">*</span></label>
+                        <div class="ac-wrap" id="acWrap">
+                            <div class="ac-field" id="acField">
+                                <i class="fas fa-search ac-icon-left"></i>
+                                <input type="text" id="acInput" class="ac-input"
+                                       placeholder="Ketik 2+ huruf nama siswa…"
+                                       autocomplete="off" spellcheck="false">
+                                <span id="acLoader" class="ac-spinner" style="display:none;">
+                                    <i class="fas fa-circle-notch fa-spin"></i>
+                                </span>
+                                <button type="button" id="acClearBtn" class="ac-clear" style="display:none;" title="Hapus pilihan">
+                                    <i class="fas fa-xmark"></i>
+                                </button>
+                            </div>
+                            <div id="acDropdown" class="ac-dropdown" style="display:none;"></div>
                         </div>
-                        <select name="siswa_id" id="siswaSelect" class="form-select" required>
-                            <option value="">— Pilih Siswa —</option>
-                            {% for s in daftar_siswa %}
-                            <option value="{{ s.id }}">{{ s.nama }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="hidden" name="siswa_id" id="siswaIdInput">
+                        <div id="acHint" class="ac-hint">Ketik minimal 2 huruf untuk mencari</div>
                     </div>
 
                     <!-- Pilih Surah -->
@@ -83,14 +87,29 @@
                         <div class="col-6">
                             <label class="form-label">Ayat Mulai</label>
                             <input type="number" name="ayat_mulai" id="ayatMulai"
-                                   class="form-control text-center fw-bold"
-                                   min="1" required placeholder="1">
+                                class="form-control text-center fw-bold" min="1" required placeholder="1">
                         </div>
                         <div class="col-6">
                             <label class="form-label">Ayat Selesai</label>
                             <input type="number" name="ayat_selesai" id="ayatSelesai"
-                                   class="form-control text-center fw-bold"
-                                   min="1" required placeholder="1">
+                                class="form-control text-center fw-bold" min="1" required placeholder="1">
+                        </div>
+                    </div>
+
+                    <!-- Rating Bintang -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-star" style="color:var(--c-accent); margin-right:.3rem;"></i>
+                            Rating Hafalan
+                        </label>
+                        <div class="star-rating" id="starRating">
+                            <input type="hidden" name="rating" id="ratingInput" value="0">
+                            {% for i in range(1, 6) %}
+                            <span class="star" data-value="{{ i }}" title="{{ i }} bintang">
+                                <i class="fas fa-star"></i>
+                            </span>
+                            {% endfor %}
+                            <span class="star-label" id="starLabel">Belum dinilai</span>
                         </div>
                     </div>
 
@@ -101,7 +120,7 @@
                             <span class="text-muted" style="font-weight:400;">(opsional)</span>
                         </label>
                         <textarea name="catatan" class="form-control" rows="3"
-                                  placeholder="Hafalan lancar, perlu diulang, dll..."></textarea>
+                            placeholder="Hafalan lancar, perlu diulang, dll..."></textarea>
                     </div>
 
                     <button type="submit" class="btn-primary-app w-100" style="justify-content:center; padding:.65rem;">
@@ -116,7 +135,8 @@
     <div class="col-xl-7 col-lg-7">
         <div class="app-card">
             <div class="app-card-header dark">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
                     <div>
                         <h2>Log Hafalan Terbaru</h2>
                         <p>Riwayat input hafalan siswa</p>
@@ -124,13 +144,14 @@
                     <div style="display:flex; align-items:center; gap:.5rem;">
                         <span style="color:rgba(255,255,255,.75); font-size:12px;">Tampilkan</span>
                         <select id="perPageSelect"
-                                style="padding:.25rem .5rem; background:rgba(255,255,255,.12); color:var(--c-white); border:1px solid rgba(255,255,255,.3); border-radius:6px; font-size:13px; width:auto;">
+                            style="padding:.25rem .5rem; background:rgba(255,255,255,.12); color:var(--c-white); border:1px solid rgba(255,255,255,.3); border-radius:6px; font-size:13px; width:auto;">
                             {% for opt in [10, 25, 50, 100, 250] %}
-                            <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}
-                                    style="color:var(--c-primary); background:var(--c-white);">{{ opt }}</option>
+                            <option value="{{ opt }}" {% if per_page==opt %}selected{% endif %}
+                                style="color:var(--c-primary); background:var(--c-white);">{{ opt }}</option>
                             {% endfor %}
                         </select>
-                        <span style="color:rgba(255,255,255,.75); font-size:12px;">/ <strong style="color:var(--c-white);">{{ total_logs }}</strong></span>
+                        <span style="color:rgba(255,255,255,.75); font-size:12px;">/ <strong
+                                style="color:var(--c-white);">{{ total_logs }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -141,11 +162,12 @@
                     <table class="app-table" style="table-layout:fixed; width:100%;">
                         <colgroup>
                             <col style="width:105px;">
-                            <col style="width:130px;">
-                            <col style="width:115px;" class="d-none d-md-table-cell">
-                            <col style="width:90px;">
+                            <col style="width:120px;">
+                            <col style="width:105px;" class="d-none d-md-table-cell">
                             <col style="width:85px;">
-                            <col>
+                            <col style="width:75px;">
+                            <col style="width:95px;">
+                            <col class="d-none d-lg-table-cell">
                             <col style="width:52px;">
                         </colgroup>
                         <thead>
@@ -155,6 +177,7 @@
                                 <th class="d-none d-md-table-cell">Surah</th>
                                 <th>Ayat</th>
                                 <th style="text-align:center;">Jumlah</th>
+                                <th style="text-align:center;">Rating</th>
                                 <th class="d-none d-lg-table-cell">Catatan</th>
                                 <th style="text-align:center;">Aksi</th>
                             </tr>
@@ -163,28 +186,45 @@
                             {% for log in logs %}
                             <tr>
                                 <td style="white-space:nowrap; font-size:12.5px;">{{ log.tanggal }}</td>
-                                <td style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ log.nama_siswa }}</td>
-                                <td class="d-none d-md-table-cell" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                <td
+                                    style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                    {{ log.nama_siswa }}</td>
+                                <td class="d-none d-md-table-cell"
+                                    style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                     <span class="tag dark" style="font-size:11px;">{{ log.nama_surah }}</span>
                                 </td>
-                                <td style="color:var(--c-neutral); white-space:nowrap; font-size:13px;">{{ log.ayat_mulai }}–{{ log.ayat_selesai }}</td>
+                                <td style="color:var(--c-neutral); white-space:nowrap; font-size:13px;">{{
+                                    log.ayat_mulai }}–{{ log.ayat_selesai }}</td>
                                 <td style="text-align:center;">
                                     <span class="tag accent" style="font-size:11px;">{{ log.jumlah_ayat }} ayat</span>
                                 </td>
-                                <td class="d-none d-lg-table-cell" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-neutral); font-size:12.5px;">
+                                <td style="text-align:center; white-space:nowrap;">
+                                    {% if log.rating and log.rating|int > 0 %}
+                                    <span class="stars-display" title="{{ log.rating }} bintang">
+
+                                        {% for i in range(1, 6) %}
+                                        {% set color = 'var(--c-accent)' if i <= log.rating|int else '#e2e8f0' %} <i
+                                            class="fas fa-star" style="font-size:11px; color:{{ color }};"></i>
+                                            {% endfor %}
+
+                                    </span>
+                                    {% else %}
+                                    <span style="color:var(--c-neutral); font-size:11px;">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="d-none d-lg-table-cell"
+                                    style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--c-neutral); font-size:12.5px;">
                                     {% if log.catatan %}
-                                    <span title="{{ log.catatan }}">{{ log.catatan[:28] }}{% if log.catatan|length > 28 %}…{% endif %}</span>
+                                    <span title="{{ log.catatan }}">{{ log.catatan[:28] }}{% if log.catatan|length > 28
+                                        %}…{% endif %}</span>
                                     {% else %}—{% endif %}
                                 </td>
                                 <td style="text-align:center;">
-                                    <button class="btn-act warn btn-edit" title="Edit Hafalan"
-                                        data-id="{{ log.id }}"
-                                        data-siswa="{{ log.nama_siswa|e }}"
-                                        data-surah-id="{{ log.surah_id }}"
-                                        data-surah-nama="{{ log.nama_surah|e }}"
-                                        data-ayat-mulai="{{ log.ayat_mulai }}"
+                                    <button class="btn-act warn btn-edit" title="Edit Hafalan" data-id="{{ log.id }}"
+                                        data-siswa="{{ log.nama_siswa|e }}" data-surah-id="{{ log.surah_id }}"
+                                        data-surah-nama="{{ log.nama_surah|e }}" data-ayat-mulai="{{ log.ayat_mulai }}"
                                         data-ayat-selesai="{{ log.ayat_selesai }}"
-                                        data-catatan="{{ (log.catatan or '')|e }}">
+                                        data-catatan="{{ (log.catatan or '')|e }}" data-rating="{{ log.rating or 0 }}">
                                         <i class="fas fa-pen" style="font-size:11px;"></i>
                                     </button>
                                 </td>
@@ -200,20 +240,23 @@
                     <nav>
                         <ul class="pagination pagination-sm justify-content-center mb-1">
                             <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-                                <a class="page-link" href="?page={{ page - 1 }}&per_page={{ per_page }}">&laquo; Prev</a>
+                                <a class="page-link" href="?page={{ page - 1 }}&per_page={{ per_page }}">&laquo;
+                                    Prev</a>
                             </li>
                             {% for p in range(1, total_pages + 1) %}
-                                {% if p == page %}
-                                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
-                                {% elif p <= 2 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
-                                <li class="page-item"><a class="page-link" href="?page={{ p }}&per_page={{ per_page }}">{{ p }}</a></li>
-                                {% elif p == 3 and page > 4 or p == total_pages - 2 and page < total_pages - 3 %}
-                                <li class="page-item disabled"><span class="page-link">…</span></li>
-                                {% endif %}
-                            {% endfor %}
-                            <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-                                <a class="page-link" href="?page={{ page + 1 }}&per_page={{ per_page }}">Next &raquo;</a>
-                            </li>
+                            {% if p == page %}
+                            <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                            {% elif p <= 2 or p> total_pages - 2 or (p >= page - 1 and p <= page + 1) %} <li
+                                    class="page-item"><a class="page-link"
+                                        href="?page={{ p }}&per_page={{ per_page }}">{{ p }}</a></li>
+                                    {% elif p == 3 and page > 4 or p == total_pages - 2 and page < total_pages - 3 %}
+                                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                                        {% endif %}
+                                        {% endfor %}
+                                        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                                            <a class="page-link"
+                                                href="?page={{ page + 1 }}&per_page={{ per_page }}">Next &raquo;</a>
+                                        </li>
                         </ul>
                     </nav>
                     <p class="text-muted text-center mb-0" style="font-size:12px;">
@@ -270,24 +313,40 @@
                         <div class="col-6">
                             <label class="form-label">Ayat Mulai</label>
                             <input type="number" name="ayat_mulai" id="editAyatMulai"
-                                   class="form-control text-center fw-bold" min="1" required>
+                                class="form-control text-center fw-bold" min="1" required>
                         </div>
                         <div class="col-6">
                             <label class="form-label">Ayat Selesai</label>
                             <input type="number" name="ayat_selesai" id="editAyatSelesai"
-                                   class="form-control text-center fw-bold" min="1" required>
+                                class="form-control text-center fw-bold" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-star" style="color:var(--c-accent); margin-right:.3rem;"></i>
+                            Rating Hafalan
+                        </label>
+                        <div class="star-rating" id="editStarRating">
+                            <input type="hidden" name="rating" id="editRatingInput" value="0">
+                            {% for i in range(1, 6) %}
+                            <span class="star" data-value="{{ i }}" title="{{ i }} bintang">
+                                <i class="fas fa-star"></i>
+                            </span>
+                            {% endfor %}
+                            <span class="star-label" id="editStarLabel">Belum dinilai</span>
                         </div>
                     </div>
 
                     <div>
                         <label class="form-label">Catatan</label>
                         <textarea name="catatan" id="editCatatan" class="form-control" rows="2"
-                                  placeholder="Catatan hafalan..."></textarea>
+                            placeholder="Catatan hafalan..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--c-border); padding:1rem 1.5rem;">
                     <button type="button" class="btn-outline-app" data-bs-dismiss="modal"
-                            style="padding:.5rem 1rem; font-size:14px;">Batal</button>
+                        style="padding:.5rem 1rem; font-size:14px;">Batal</button>
                     <button type="submit" class="btn-primary-app" style="padding:.5rem 1.25rem;">
                         <i class="fas fa-floppy-disk"></i> Simpan Perubahan
                     </button>
@@ -295,194 +354,543 @@
             </form>
         </div>
     </div>
-</div>
-{% endblock %}
+    <style>
+        /* ── Autocomplete Siswa ── */
+        .ac-wrap { position: relative; }
 
-<style>
-/* AI Estimation Box */
-.ai-box {
-    background: var(--c-bg);
-    border: 1px solid #a7f3d0;
-    border-radius: var(--radius-sm);
-    padding: 1rem;
-}
-.ai-box-header {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    margin-bottom: .875rem;
-    font-size: 13.5px;
-    color: var(--c-primary);
-}
-.ai-icon {
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    background: var(--c-primary);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-}
-.ai-icon i { color: var(--c-white); font-size: 12px; }
-.ai-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: .625rem;
-    text-align: center;
-    margin-bottom: .75rem;
-}
-.ai-stat {
-    background: var(--c-white);
-    border-radius: 8px;
-    padding: .625rem .5rem;
-    border: 1px solid var(--c-border);
-}
-.ai-stat-val {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--c-primary);
-    line-height: 1.2;
-}
-.ai-stat-val.accent { color: #166534; }
-.ai-stat-val.muted  { color: var(--c-neutral); }
-.ai-stat-label { font-size: 11px; color: var(--c-neutral); font-weight: 500; margin-top: .15rem; }
-</style>
+        .ac-field {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            border: 1.5px solid var(--c-border);
+            border-radius: var(--radius-sm);
+            background: var(--c-white);
+            padding: .45rem .75rem;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .ac-field:focus-within {
+            border-color: var(--c-primary);
+            box-shadow: 0 0 0 3px rgba(27,67,50,.12);
+        }
+        .ac-field.ac-selected {
+            border-color: #166534;
+            background: #f0fdf4;
+        }
+        .ac-icon-left { color: var(--c-neutral); font-size: 13px; flex-shrink: 0; }
+        .ac-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 14px;
+            color: var(--c-primary);
+            min-width: 0;
+        }
+        .ac-input::placeholder { color: #adb5bd; }
+        .ac-spinner { color: var(--c-neutral); font-size: 13px; flex-shrink: 0; }
+        .ac-clear {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px; height: 20px;
+            border: none;
+            background: #e2e8f0;
+            border-radius: 50%;
+            color: var(--c-neutral);
+            font-size: 11px;
+            cursor: pointer;
+            flex-shrink: 0;
+            padding: 0;
+            transition: background .15s;
+        }
+        .ac-clear:hover { background: #cbd5e1; color: #333; }
 
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const siswaSelect  = document.getElementById('siswaSelect');
-    const siswaSearch  = document.getElementById('siswaSearch');
-    const surahSelect  = document.getElementById('surahSelect');
-    const ayatMulai    = document.getElementById('ayatMulai');
-    const ayatSelesai  = document.getElementById('ayatSelesai');
-    const prediksiBox  = document.getElementById('prediksiBox');
+        .ac-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0; right: 0;
+            background: var(--c-white);
+            border: 1.5px solid var(--c-border);
+            border-radius: var(--radius-sm);
+            box-shadow: 0 4px 16px rgba(0,0,0,.12);
+            z-index: 999;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .ac-item {
+            padding: .6rem .875rem;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--c-border);
+            transition: background .1s;
+        }
+        .ac-item:last-child { border-bottom: none; }
+        .ac-item:hover,
+        .ac-item.ac-focus { background: #f0fdf4; color: var(--c-primary); }
+        .ac-item mark {
+            background: transparent;
+            color: #166534;
+            font-weight: 700;
+            padding: 0;
+        }
+        .ac-empty {
+            padding: .75rem .875rem;
+            font-size: 13px;
+            color: var(--c-neutral);
+            text-align: center;
+        }
+        .ac-hint {
+            font-size: 11.5px;
+            color: var(--c-neutral);
+            margin-top: .35rem;
+        }
+        .ac-hint.error { color: #dc3545; }
+        .ac-field.ac-field-error { border-color: #dc3545; box-shadow: 0 0 0 3px rgba(220,53,69,.12); }
 
-    // ── Per-page selector ──
-    document.getElementById('perPageSelect').addEventListener('change', function() {
-        const url = new URL(window.location);
-        url.searchParams.set('per_page', this.value);
-        url.searchParams.set('page', '1');
-        window.location = url;
-    });
+        /* AI Estimation Box */
+        .ai-box {
+            background: var(--c-bg);
+            border: 1px solid #a7f3d0;
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+        }
 
-    // ── Search siswa ──
-    const allSiswaOptions = [...siswaSelect.options].map(o => ({
-        value: o.value, text: o.textContent.trim()
-    }));
+        .ai-box-header {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin-bottom: .875rem;
+            font-size: 13.5px;
+            color: var(--c-primary);
+        }
 
-    siswaSearch.addEventListener('input', function() {
-        const kw = this.value.toLowerCase();
-        siswaSelect.innerHTML = '';
-        allSiswaOptions.forEach(opt => {
-            if (!kw || opt.value === '' || opt.text.toLowerCase().includes(kw)) {
-                const o = document.createElement('option');
-                o.value = opt.value;
-                o.textContent = opt.text;
-                siswaSelect.appendChild(o);
+        .ai-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--c-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ai-icon i {
+            color: var(--c-white);
+            font-size: 12px;
+        }
+
+        .ai-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: .625rem;
+            text-align: center;
+            margin-bottom: .75rem;
+        }
+
+        .ai-stat {
+            background: var(--c-white);
+            border-radius: 8px;
+            padding: .625rem .5rem;
+            border: 1px solid var(--c-border);
+        }
+
+        .ai-stat-val {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--c-primary);
+            line-height: 1.2;
+        }
+
+        .ai-stat-val.accent {
+            color: #166534;
+        }
+
+        .ai-stat-val.muted {
+            color: var(--c-neutral);
+        }
+
+        .ai-stat-label {
+            font-size: 11px;
+            color: var(--c-neutral);
+            font-weight: 500;
+            margin-top: .15rem;
+        }
+
+        /* Star Rating */
+        .star-rating {
+            display: flex;
+            align-items: center;
+            gap: .25rem;
+        }
+
+        .star-rating .star {
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform .15s;
+        }
+
+        .star-rating .star i {
+            color: #e2e8f0 !important;
+            transition: color .15s;
+        }
+
+        .star-rating .star:hover,
+        .star-rating .star.hovered {
+            transform: scale(1.15);
+        }
+
+        .star-rating .star:hover i,
+        .star-rating .star.hovered i,
+        .star-rating .star.active.hovered i,
+        .star-rating .star.active:hover i {
+            color: #FFC107 !important;
+        }
+
+        .star-rating .star.active i {
+            color: #FFC107 !important;
+        }
+
+        .star-label {
+            font-size: 12px;
+            color: var(--c-neutral);
+            margin-left: .5rem;
+            font-weight: 500;
+        }
+    </style>
+    {% endblock %}
+
+    {% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const surahSelect  = document.getElementById('surahSelect');
+            const ayatMulai    = document.getElementById('ayatMulai');
+            const ayatSelesai  = document.getElementById('ayatSelesai');
+            const prediksiBox  = document.getElementById('prediksiBox');
+            const siswaIdInput = document.getElementById('siswaIdInput');
+
+            // ── Per-page selector ──
+            document.getElementById('perPageSelect').addEventListener('change', function () {
+                const url = new URL(window.location);
+                url.searchParams.set('per_page', this.value);
+                url.searchParams.set('page', '1');
+                window.location = url;
+            });
+
+            // ══════════════════════════════════════════
+            // AUTOCOMPLETE SISWA
+            // ══════════════════════════════════════════
+            const acInput    = document.getElementById('acInput');
+            const acDropdown = document.getElementById('acDropdown');
+            const acLoader   = document.getElementById('acLoader');
+            const acClearBtn = document.getElementById('acClearBtn');
+            const acField    = document.getElementById('acField');
+            const acHint     = document.getElementById('acHint');
+
+            let acTimer   = null;
+            let acResults = [];
+            let acCursor  = -1;
+
+            // Escape regex special chars sebelum highlight
+            function escapeRe(s) {
+                return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             }
-        });
-        const real = [...siswaSelect.options].filter(o => o.value !== '');
-        if (real.length === 1) {
-            siswaSelect.value = real[0].value;
-            siswaSelect.dispatchEvent(new Event('change'));
-        }
-    });
 
-    // ── Auto-fill ayat mulai ──
-    function fetchLastAyat() {
-        const siswaId = siswaSelect.value;
-        const surahId = surahSelect.value;
-        if (!siswaId || !surahId) return;
+            // Highlight setiap keyword di teks
+            function highlight(text, query) {
+                let out = text;
+                query.trim().split(/\s+/).filter(Boolean).forEach(kw => {
+                    out = out.replace(new RegExp(`(${escapeRe(kw)})`, 'gi'),
+                        '<mark>$1</mark>');
+                });
+                return out;
+            }
 
-        fetch(`/api/last-ayat?siswa_id=${siswaId}&surah_id=${surahId}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) return;
-                ayatMulai.max  = data.total_ayat;
-                ayatSelesai.max = data.total_ayat;
-                if (data.selesai) {
-                    ayatMulai.value = '';
-                    ayatSelesai.value = '';
-                    alert(`Siswa sudah selesai menghafal surah ini (${data.total_ayat} ayat)`);
+            function renderDropdown(results, query) {
+                acCursor = -1;
+                if (!results.length) {
+                    acDropdown.innerHTML = '<div class="ac-empty"><i class="fas fa-search" style="margin-right:.4rem;opacity:.4;"></i>Tidak ditemukan</div>';
                 } else {
-                    ayatMulai.value = data.next_ayat;
-                    ayatSelesai.value = '';
-                    ayatSelesai.focus();
+                    acDropdown.innerHTML = results.map((r, i) =>
+                        `<div class="ac-item" data-i="${i}">
+                            <i class="fas fa-user" style="font-size:11px;color:var(--c-neutral);margin-right:.5rem;"></i>
+                            ${highlight(r.nama, query)}
+                        </div>`
+                    ).join('');
+                    acDropdown.querySelectorAll('.ac-item').forEach(el => {
+                        // mousedown bukan click agar tidak kalah sama blur
+                        el.addEventListener('mousedown', e => {
+                            e.preventDefault();
+                            selectSiswa(parseInt(el.dataset.i));
+                        });
+                    });
                 }
-            })
-            .catch(() => {});
-    }
+                acDropdown.style.display = 'block';
+            }
 
-    // ── Prediksi ML ──
-    function fetchPrediksi() {
-        const siswaId = siswaSelect.value;
-        const surahId = surahSelect.value;
-        if (!siswaId || !surahId) { prediksiBox.style.display = 'none'; return; }
+            function moveCursor(dir) {
+                const items = acDropdown.querySelectorAll('.ac-item');
+                if (!items.length) return;
+                items[acCursor]?.classList.remove('ac-focus');
+                acCursor = Math.max(0, Math.min(acCursor + dir, items.length - 1));
+                items[acCursor].classList.add('ac-focus');
+                items[acCursor].scrollIntoView({ block: 'nearest' });
+            }
 
-        fetch(`/api/prediksi?siswa_id=${siswaId}&surah_id=${surahId}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) { prediksiBox.style.display = 'none'; return; }
-                document.getElementById('predSisa').textContent   = data.sisa_ayat;
-                document.getElementById('predSpeed').textContent  = data.prediksi_ayat_per_hari + ' ayat';
-                document.getElementById('predHari').textContent   = data.sisa_ayat === 0 ? 'Selesai!' : data.estimasi_low + '–' + data.estimasi_high + ' hari';
-                document.getElementById('predProgress').style.width = data.progress_persen + '%';
-                document.getElementById('predDetail').textContent = `Progress: ${data.ayat_sudah}/${data.total_ayat} (${data.progress_persen}%) · ${data.insight}`;
-                prediksiBox.style.display = 'block';
-            })
-            .catch(() => { prediksiBox.style.display = 'none'; });
-    }
+            function selectSiswa(idx) {
+                const item = acResults[idx];
+                if (!item) return;
+                acInput.value      = item.nama;
+                siswaIdInput.value = item.id;
+                acDropdown.style.display = 'none';
+                acClearBtn.style.display = 'flex';
+                acField.classList.add('ac-selected');
+                acHint.textContent = '✓ Siswa dipilih';
+                acHint.classList.remove('error');
+                fetchLastAyat();
+                fetchPrediksi();
+            }
 
-    // ── Event listeners ──
-    siswaSelect.addEventListener('change', () => { fetchLastAyat(); fetchPrediksi(); });
+            function clearSelection() {
+                acInput.value      = '';
+                siswaIdInput.value = '';
+                acResults          = [];
+                acDropdown.style.display = 'none';
+                acClearBtn.style.display = 'none';
+                acField.classList.remove('ac-selected');
+                acHint.textContent = 'Ketik minimal 2 huruf untuk mencari';
+                acHint.classList.remove('error');
+                prediksiBox.style.display = 'none';
+                acInput.focus();
+            }
 
-    surahSelect.addEventListener('change', function() {
-        const max = this.options[this.selectedIndex].dataset.ayat || 1;
-        ayatMulai.max  = max;
-        ayatSelesai.max = max;
-        ayatMulai.value = '';
-        ayatSelesai.value = '';
-        fetchLastAyat();
-        fetchPrediksi();
-    });
+            acInput.addEventListener('input', () => {
+                clearTimeout(acTimer);
+                const q = acInput.value.trim();
 
-    document.getElementById('formHafalan').addEventListener('submit', function(e) {
-        if (parseInt(ayatSelesai.value) < parseInt(ayatMulai.value)) {
-            e.preventDefault();
-            alert('Ayat selesai harus >= ayat mulai');
-        }
-    });
+                // Jika user hapus teks setelah pilih → reset selection
+                if (siswaIdInput.value && acInput.value.trim() === '') {
+                    clearSelection();
+                    return;
+                }
+                // Jika teks diubah setelah ada pilihan → reset
+                if (siswaIdInput.value) {
+                    siswaIdInput.value = '';
+                    acField.classList.remove('ac-selected');
+                    acClearBtn.style.display = 'none';
+                }
 
-    // ── Edit Modal ──
-    const editModal       = new bootstrap.Modal(document.getElementById('editModal'));
-    const editSurahSelect = document.getElementById('editSurahSelect');
+                if (q.length < 2) {
+                    acDropdown.style.display = 'none';
+                    acHint.textContent = 'Ketik minimal 2 huruf untuk mencari';
+                    acHint.classList.remove('error');
+                    return;
+                }
 
-    editSurahSelect.addEventListener('change', function() {
-        const max = this.options[this.selectedIndex].dataset.ayat || 1;
-        document.getElementById('editAyatMulai').max  = max;
-        document.getElementById('editAyatSelesai').max = max;
-    });
+                acHint.textContent = 'Mencari…';
+                acHint.classList.remove('error');
 
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.btn-edit');
-        if (!btn) return;
+                // Debounce 300ms
+                acTimer = setTimeout(() => {
+                    acLoader.style.display = 'flex';
+                    fetch(`/api/search-siswa?q=${encodeURIComponent(q)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            acLoader.style.display = 'none';
+                            acResults = data;
+                            acHint.textContent = data.length
+                                ? `${data.length} hasil ditemukan`
+                                : 'Tidak ditemukan';
+                            renderDropdown(data, q);
+                        })
+                        .catch(() => {
+                            acLoader.style.display = 'none';
+                            acHint.textContent = 'Gagal terhubung ke server';
+                            acHint.classList.add('error');
+                        });
+                }, 300);
+            });
 
-        document.getElementById('editInfoSiswa').textContent       = btn.dataset.siswa;
-        document.getElementById('editAyatMulai').value             = btn.dataset.ayatMulai;
-        document.getElementById('editAyatSelesai').value           = btn.dataset.ayatSelesai;
-        document.getElementById('editCatatan').value               = btn.dataset.catatan;
-        document.getElementById('formEdit').action                 = `/guru/edit-hafalan/${btn.dataset.id}`;
+            acInput.addEventListener('keydown', e => {
+                const open = acDropdown.style.display !== 'none';
+                if (e.key === 'ArrowDown')  { e.preventDefault(); if (open) moveCursor(1); }
+                else if (e.key === 'ArrowUp')   { e.preventDefault(); if (open) moveCursor(-1); }
+                else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (open && acCursor >= 0) selectSiswa(acCursor);
+                    else if (open && acResults.length === 1) selectSiswa(0);
+                }
+                else if (e.key === 'Escape') { acDropdown.style.display = 'none'; }
+            });
 
-        editSurahSelect.value = btn.dataset.surahId;
-        editSurahSelect.dispatchEvent(new Event('change'));
+            acClearBtn.addEventListener('click', clearSelection);
 
-        editModal.show();
-    });
+            // Tutup dropdown jika klik di luar
+            document.addEventListener('click', e => {
+                if (!document.getElementById('acWrap').contains(e.target)) {
+                    acDropdown.style.display = 'none';
+                }
+            });
 
-    document.getElementById('formEdit').addEventListener('submit', function(e) {
-        const mulai   = parseInt(document.getElementById('editAyatMulai').value);
-        const selesai = parseInt(document.getElementById('editAyatSelesai').value);
-        if (selesai < mulai) { e.preventDefault(); alert('Ayat selesai harus >= ayat mulai'); }
-    });
-});
-</script>
-{% endblock %}
+            // ── Auto-fill ayat mulai ──
+            function fetchLastAyat() {
+                const siswaId = siswaIdInput.value;
+                const surahId = surahSelect.value;
+                if (!siswaId || !surahId) return;
+
+                fetch(`/api/last-ayat?siswa_id=${siswaId}&surah_id=${surahId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.error) return;
+                        ayatMulai.max = data.total_ayat;
+                        ayatSelesai.max = data.total_ayat;
+                        if (data.selesai) {
+                            ayatMulai.value = '';
+                            ayatSelesai.value = '';
+                            alert(`Siswa sudah selesai menghafal surah ini (${data.total_ayat} ayat)`);
+                        } else {
+                            ayatMulai.value = data.next_ayat;
+                            ayatSelesai.value = '';
+                            ayatSelesai.focus();
+                        }
+                    })
+                    .catch(() => { });
+            }
+
+            // ── Prediksi ML ──
+            function fetchPrediksi() {
+                const siswaId = siswaIdInput.value;
+                const surahId = surahSelect.value;
+                if (!siswaId || !surahId) { prediksiBox.style.display = 'none'; return; }
+
+                fetch(`/api/prediksi?siswa_id=${siswaId}&surah_id=${surahId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.error) { prediksiBox.style.display = 'none'; return; }
+                        document.getElementById('predSisa').textContent = data.sisa_ayat;
+                        document.getElementById('predSpeed').textContent = data.prediksi_ayat_per_hari + ' ayat';
+                        document.getElementById('predHari').textContent = data.sisa_ayat === 0 ? 'Selesai!' : data.estimasi_low + '–' + data.estimasi_high + ' hari';
+                        document.getElementById('predProgress').style.width = data.progress_persen + '%';
+                        document.getElementById('predDetail').textContent = `Progress: ${data.ayat_sudah}/${data.total_ayat} (${data.progress_persen}%) · ${data.insight}`;
+                        prediksiBox.style.display = 'block';
+                    })
+                    .catch(() => { prediksiBox.style.display = 'none'; });
+            }
+
+            // ── Surah change ──
+            surahSelect.addEventListener('change', function () {
+                const max = this.options[this.selectedIndex].dataset.ayat || 1;
+                ayatMulai.max = max;
+                ayatSelesai.max = max;
+                ayatMulai.value = '';
+                ayatSelesai.value = '';
+                fetchLastAyat();
+                fetchPrediksi();
+            });
+
+            // ── Form submit validation ──
+            document.getElementById('formHafalan').addEventListener('submit', function (e) {
+                if (!siswaIdInput.value) {
+                    e.preventDefault();
+                    acHint.textContent = 'Pilih siswa terlebih dahulu';
+                    acHint.classList.add('error');
+                    acField.classList.add('ac-field-error');
+                    acInput.focus();
+                    return;
+                }
+                if (parseInt(ayatSelesai.value) < parseInt(ayatMulai.value)) {
+                    e.preventDefault();
+                    alert('Ayat selesai harus >= ayat mulai');
+                }
+            });
+
+            // ── Star Rating Helper ──
+            const STAR_LABELS = ['Belum dinilai', 'Kurang', 'Cukup', 'Baik', 'Sangat Baik', 'Sempurna'];
+
+            function initStarRating(container, inputEl, labelEl) {
+                const stars = container.querySelectorAll('.star');
+                stars.forEach(star => {
+                    star.addEventListener('mouseenter', function () {
+                        const val = parseInt(this.dataset.value);
+                        stars.forEach(s => s.classList.toggle('hovered', parseInt(s.dataset.value) <= val));
+                    });
+                    star.addEventListener('mouseleave', function () {
+                        stars.forEach(s => s.classList.remove('hovered'));
+                    });
+                    star.addEventListener('click', function () {
+                        const val = parseInt(this.dataset.value);
+                        const current = parseInt(inputEl.value);
+                        // klik bintang yang sama = reset ke 0
+                        const newVal = (val === current) ? 0 : val;
+                        inputEl.value = newVal;
+                        stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.value) <= newVal));
+                        labelEl.textContent = STAR_LABELS[newVal];
+                    });
+                });
+            }
+
+            function setStarValue(container, inputEl, labelEl, val) {
+                inputEl.value = val;
+                container.querySelectorAll('.star').forEach(s =>
+                    s.classList.toggle('active', parseInt(s.dataset.value) <= val)
+                );
+                labelEl.textContent = STAR_LABELS[val];
+            }
+
+            // Init star rating for main form
+            initStarRating(
+                document.getElementById('starRating'),
+                document.getElementById('ratingInput'),
+                document.getElementById('starLabel')
+            );
+
+            // Init star rating for edit modal
+            initStarRating(
+                document.getElementById('editStarRating'),
+                document.getElementById('editRatingInput'),
+                document.getElementById('editStarLabel')
+            );
+
+            // ── Edit Modal ──
+            const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+            const editSurahSelect = document.getElementById('editSurahSelect');
+
+            editSurahSelect.addEventListener('change', function () {
+                const max = this.options[this.selectedIndex].dataset.ayat || 1;
+                document.getElementById('editAyatMulai').max = max;
+                document.getElementById('editAyatSelesai').max = max;
+            });
+
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('.btn-edit');
+                if (!btn) return;
+
+                document.getElementById('editInfoSiswa').textContent = btn.dataset.siswa;
+                document.getElementById('editAyatMulai').value = btn.dataset.ayatMulai;
+                document.getElementById('editAyatSelesai').value = btn.dataset.ayatSelesai;
+                document.getElementById('editCatatan').value = btn.dataset.catatan;
+                document.getElementById('formEdit').action = `/guru/edit-hafalan/${btn.dataset.id}`;
+
+                editSurahSelect.value = btn.dataset.surahId;
+                editSurahSelect.dispatchEvent(new Event('change'));
+
+                // Set rating di edit modal
+                const editRating = parseInt(btn.dataset.rating) || 0;
+                setStarValue(
+                    document.getElementById('editStarRating'),
+                    document.getElementById('editRatingInput'),
+                    document.getElementById('editStarLabel'),
+                    editRating
+                );
+
+                editModal.show();
+            });
+
+            document.getElementById('formEdit').addEventListener('submit', function (e) {
+                const mulai = parseInt(document.getElementById('editAyatMulai').value);
+                const selesai = parseInt(document.getElementById('editAyatSelesai').value);
+                if (selesai < mulai) { e.preventDefault(); alert('Ayat selesai harus >= ayat mulai'); }
+            });
+        });
+    </script>
+    {% endblock %}

@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Rekap Hafalan — Guru{% endblock %}
+
+{% block extra_css %}
+<style>
+.filter-form-wrapper {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+}
+.filter-form-wrapper .form-group {
+    flex: 1;
+}
+.filter-form-wrapper label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-primary);
+    display: block;
+    margin-bottom: 6px;
+}
+.filter-form-wrapper .required {
+    color: #E63946;
+}
+.filter-form-wrapper select {
+    width: 100%;
+    padding: 5px;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.stat-box {
+    text-align: center;
+    padding: 1.25rem;
+}
+.stat-box-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--c-primary);
+}
+.stat-box-value.accent {
+    color: var(--c-accent);
+}
+.stat-box-label {
+    font-size: 12px;
+    color: var(--c-neutral);
+    margin-top: 4px;
+}
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    justify-content: flex-end;
+}
+.surah-legend {
+    font-size: 12px;
+    color: var(--c-neutral);
+    display: flex;
+    gap: 14px;
+}
+.legend-complete { color: #2D6A4F; font-weight: 700; }
+.legend-progress { color: #F59E0B; font-weight: 700; }
+.legend-pending { color: #D1D5DB; }
+.row-complete { background: #E8F5E9; }
+.row-progress { background: #FFF8E1; }
+.progress-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.progress-bar-bg {
+    flex: 1;
+    background: #e2e8f0;
+    border-radius: 6px;
+    height: 7px;
+    overflow: hidden;
+}
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+}
+.progress-bar-fill.complete { background: #2D6A4F; }
+.progress-bar-fill.half { background: var(--c-accent); }
+.progress-bar-fill.start { background: var(--c-primary); }
+.progress-percent {
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 36px;
+}
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+.empty-state i {
+    font-size: 48px;
+    color: var(--c-neutral);
+    opacity: 0.5;
+}
+.empty-state p {
+    color: var(--c-neutral);
+    margin-top: 1rem;
+}
+.rating-value {
+    color: #F59E0B;
+}
+.rating-empty {
+    color: #D1D5DB;
+}
+.font-weight-dynamic {
+    font-weight: 600;
+}
+.font-weight-normal {
+    font-weight: 400;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-file-lines"></i> Rekap Hafalan Siswa</h1>
+    <p>Pilih siswa untuk melihat rekap hafalan keseluruhan</p>
+</div>
+
+<!-- Filter Form -->
+<div class="app-card" style="margin-bottom:1.5rem;">
+    <div class="app-card-header">
+        <h3 style="margin:0;"><i class="fas fa-filter"></i> Pilih Siswa</h3>
+    </div>
+    <div class="app-card-body" style="padding:1.5rem;">
+        <form method="get" action="/guru/rekap" id="filterForm">
+            <div class="filter-form-wrapper">
+                <div class="form-group">
+                    <label>
+                        Siswa <span class="required">*</span>
+                    </label>
+                    <select name="siswa_id" class="app-input" required>
+                        <option value="">-- Pilih Siswa --</option>
+                        {% for s in daftar_siswa %}
+                        <option value="{{ s.id }}" {% if selected_siswa == s.id %}selected{% endif %}>{{ s.nama }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="btn-primary-app" style="height:32px; padding:0 1.5rem;">
+                        <i class="fas fa-search"></i> Tampilkan
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if rekap %}
+<!-- Action Buttons -->
+<div class="action-buttons">
+    <a href="/guru/rekap/cetak/{{ rekap.siswa.id }}"
+       target="_blank" class="btn-primary-app" style="padding:0.5rem 1.25rem;">
+        <i class="fas fa-print"></i> Cetak / Simpan PDF
+    </a>
+</div>
+
+<!-- Ringkasan -->
+<div class="stats-grid">
+    <div class="app-card stat-box">
+        <div class="stat-box-value">{{ rekap.stats.total_ayat }}</div>
+        <div class="stat-box-label">Total Ayat</div>
+    </div>
+    <div class="app-card stat-box">
+        <div class="stat-box-value">{{ rekap.stats.total_surah }}</div>
+        <div class="stat-box-label">Surah Aktif</div>
+    </div>
+    <div class="app-card stat-box">
+        <div class="stat-box-value">{{ rekap.stats.total_setoran }}</div>
+        <div class="stat-box-label">Total Setoran</div>
+    </div>
+    <div class="app-card stat-box">
+        <div class="stat-box-value">{{ rekap.stats.hari_aktif }}</div>
+        <div class="stat-box-label">Hari Aktif</div>
+    </div>
+    <div class="app-card stat-box">
+        <div class="stat-box-value accent">
+            {% if rekap.stats.avg_rating > 0 %}{{ "%.1f"|format(rekap.stats.avg_rating) }}{% else %}-{% endif %}
+        </div>
+        <div class="stat-box-label">Rata-rata Rating</div>
+    </div>
+</div>
+
+<!-- Daftar 114 Surah -->
+<div class="app-card">
+    <div class="app-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;"><i class="fas fa-book-quran"></i> Daftar Hafalan 114 Surah</h3>
+        <div class="surah-legend">
+            <span><span class="legend-complete">&#10003;</span> Selesai</span>
+            <span><span class="legend-progress">&#9679;</span> Proses</span>
+            <span><span class="legend-pending">—</span> Belum</span>
+        </div>
+    </div>
+    <div class="app-card-body" style="padding:0;">
+        <table class="app-table" style="font-size:13px;">
+            <thead>
+                <tr>
+                    <th style="width:35px; text-align:center;">No</th>
+                    <th>Surah</th>
+                    <th style="text-align:center; width:55px;">Ayat</th>
+                    <th style="text-align:center; width:60px;">Dihafal</th>
+                    <th style="width:160px;">Progress</th>
+                    <th style="text-align:center; width:45px;">Status</th>
+                    <th style="text-align:center; width:55px;">Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in rekap.all_surah %}
+                <tr class="{% if s.status == 'selesai' %}row-complete{% elif s.status == 'proses' %}row-progress{% endif %}">
+                    <td style="text-align:center;">{{ s.nomor }}</td>
+                    <td class="{% if s.status != 'belum' %}font-weight-dynamic{% else %}font-weight-normal{% endif %}">{{ s.nama }}</td>
+                    <td style="text-align:center;">{{ s.total_ayat }}</td>
+                    <td style="text-align:center; font-weight:600;">{{ s.ayat_dihafal }}</td>
+                    <td>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar-bg">
+                                {% set progress_class = 'complete' if s.persen >= 100 else ('half' if s.persen >= 50 else 'start') %}
+                                <div class="progress-bar-fill {{ progress_class }}" data-width="{{ s.persen }}"></div>
+                            </div>
+                            <span class="progress-percent">{{ "%.1f"|format(s.persen) }}%</span>
+                        </div>
+                    </td>
+                    <td style="text-align:center;">
+                        {% if s.status == 'selesai' %}
+                            <span class="legend-complete">&#10003;</span>
+                        {% elif s.status == 'proses' %}
+                            <span class="legend-progress">&#9679;</span>
+                        {% else %}
+                            <span class="legend-pending">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center; font-weight:600;">
+                        {% if s.avg_rating > 0 %}
+                            <span class="rating-value">{{ "%.1f"|format(s.avg_rating) }}</span>
+                        {% else %}
+                            <span class="rating-empty">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif selected_siswa %}
+<div class="app-card empty-state">
+    <i class="fas fa-inbox"></i>
+    <p>Tidak ada data hafalan untuk siswa ini pada rentang tanggal yang dipilih</p>
+</div>
+{% else %}
+<div class="app-card empty-state">
+    <i class="fas fa-file-lines"></i>
+    <p>Pilih siswa untuk melihat rekap hafalan</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set progress bar widths from data attributes
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.progress-bar-fill[data-width]').forEach(function(el) {
+        el.style.width = el.getAttribute('data-width') + '%';
+    });
+});
+</script>
+{% endblock %}

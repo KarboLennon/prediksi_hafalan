@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Rekap Hafalan — {{ rekap.siswa.nama }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 18mm;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            color: #1B4332;
+            font-size: 11pt;
+            line-height: 1.5;
+            background: #fff;
+        }
+
+        /* ── Header / Kop Surat ── */
+        .kop {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding-bottom: 14px;
+            border-bottom: 3px double #1B4332;
+            margin-bottom: 20px;
+        }
+        .kop img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+        }
+        .kop-text {
+            flex: 1;
+            text-align: center;
+        }
+        .kop-text h1 {
+            font-size: 16pt;
+            font-weight: 700;
+            color: #1B4332;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .kop-text h2 {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #2D6A4F;
+            margin-bottom: 2px;
+        }
+        .kop-text p {
+            font-size: 9pt;
+            color: #6C757D;
+        }
+
+        /* ── Title ── */
+        .report-title {
+            text-align: center;
+            margin: 18px 0;
+            padding: 10px;
+            background: #F1FAF7;
+            border-radius: 6px;
+        }
+        .report-title h2 {
+            font-size: 14pt;
+            font-weight: 700;
+            color: #1B4332;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .report-title p {
+            font-size: 9pt;
+            color: #6C757D;
+            margin-top: 4px;
+        }
+
+        /* ── Info Siswa ── */
+        .info-siswa {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 30px;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: #F8FDF9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+        }
+        .info-row {
+            display: flex;
+            gap: 8px;
+            font-size: 10pt;
+        }
+        .info-label {
+            font-weight: 600;
+            min-width: 130px;
+            color: #374151;
+        }
+        .info-value {
+            color: #1B4332;
+        }
+
+        /* ── Stats Cards ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 12px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .stat-value {
+            font-size: 20pt;
+            font-weight: 700;
+            color: #1B4332;
+        }
+        .stat-label {
+            font-size: 8pt;
+            color: #6C757D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* ── Section Headers ── */
+        .section-title {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #1B4332;
+            padding: 8px 12px;
+            background: #1B4332;
+            color: #fff;
+            border-radius: 4px 4px 0 0;
+            margin-top: 18px;
+        }
+
+        /* ── Tables ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9.5pt;
+            margin-bottom: 16px;
+        }
+        table thead th {
+            background: #2D6A4F;
+            color: #fff;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 9pt;
+        }
+        table tbody td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e8ede9;
+            color: #374151;
+        }
+        table tbody tr:nth-child(even) {
+            background: #F8FDF9;
+        }
+        table tbody tr:hover {
+            background: #EDF7F0;
+        }
+
+        /* ── Progress Bar ── */
+        .progress-bar-wrap {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        /* ── Stars ── */
+        .star { color: #FFC107; font-size: 10pt; }
+        .star-empty { color: #e2e8f0; font-size: 10pt; }
+
+        /* ── Prediksi AI ── */
+        .ai-section {
+            margin-top: 18px;
+            page-break-inside: avoid;
+        }
+        .ai-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            background: #F8FDF9;
+        }
+        .ai-card .ai-label {
+            font-size: 8pt;
+            color: #6C757D;
+            text-transform: uppercase;
+        }
+        .ai-card .ai-value {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #1B4332;
+        }
+
+        /* ── Footer ── */
+        .report-footer {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .ttd-box {
+            text-align: center;
+            padding-top: 8px;
+        }
+        .ttd-box .ttd-title {
+            font-size: 9pt;
+            color: #6C757D;
+        }
+        .ttd-box .ttd-space {
+            height: 60px;
+        }
+        .ttd-box .ttd-name {
+            font-size: 10pt;
+            font-weight: 600;
+            color: #1B4332;
+            border-top: 1px solid #1B4332;
+            display: inline-block;
+            padding-top: 4px;
+            min-width: 160px;
+        }
+
+        .watermark {
+            text-align: center;
+            font-size: 8pt;
+            color: #aaa;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        /* ── Print ── */
+        .no-print { }
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .page-break { page-break-before: always; }
+        }
+        @media screen {
+            body { max-width: 800px; margin: 20px auto; padding: 20px; }
+        }
+
+        /* ── Print Button ── */
+        .print-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1B4332;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .print-bar span {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .print-bar .btns {
+            display: flex;
+            gap: 10px;
+        }
+        .print-bar button, .print-bar a {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-print {
+            background: #FFC107;
+            color: #1B4332;
+        }
+        .btn-print:hover { background: #e6ac00; }
+        .btn-back {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.25); }
+    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- Print Bar -->
+<div class="print-bar no-print" style="margin-bottom:60px;">
+    <span><i class="fas fa-file-pdf"></i> Preview Rekap Hafalan</span>
+    <div class="btns">
+        <a href="/guru/rekap?siswa_id={{ rekap.siswa.id }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i> Kembali
+        </a>
+        <button onclick="window.print()" class="btn-print">
+            <i class="fas fa-print"></i> Cetak / Simpan PDF
+        </button>
+    </div>
+</div>
+
+<!-- Kop Surat -->
+<div class="kop">
+    <img src="/static/gambar/jamiyah.png" alt="Logo" onerror="this.style.display='none'">
+    <div class="kop-text">
+        <h1>SISTEM MONITORING HAFALAN AL-QUR'AN</h1>
+        <h2>Laporan Rekap Hafalan Siswa</h2>
+        <p>Dicetak pada: {{ tanggal_cetak }}</p>
+    </div>
+    <img src="/static/gambar/jamiyah.png" alt="Logo" onerror="this.style.display='none'">
+</div>
+
+<!-- Title -->
+<div class="report-title">
+    <h2>REKAP HAFALAN SISWA</h2>
+    <p>Total Keseluruhan</p>
+</div>
+
+<!-- Info Siswa -->
+<div class="info-siswa">
+    <div class="info-row">
+        <span class="info-label">Nama Siswa</span>
+        <span class="info-value">: {{ rekap.siswa.nama }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">NIS</span>
+        <span class="info-value">: {{ rekap.siswa.nis or '-' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Total Setoran</span>
+        <span class="info-value">: {{ rekap.stats.total_setoran }} kali</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Tanggal Cetak</span>
+        <span class="info-value">: {{ tanggal_cetak }}</span>
+    </div>
+</div>
+
+<!-- Ringkasan Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-value">{{ rekap.stats.total_ayat }}</div>
+        <div class="stat-label">Total Ayat</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ rekap.stats.total_surah }}</div>
+        <div class="stat-label">Surah Aktif</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ rekap.stats.total_setoran }}</div>
+        <div class="stat-label">Total Setoran</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ rekap.stats.hari_aktif }}</div>
+        <div class="stat-label">Hari Aktif</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:#FFC107;">
+            {% if rekap.stats.avg_rating > 0 %}{{ "%.1f"|format(rekap.stats.avg_rating) }}{% else %}-{% endif %}
+        </div>
+        <div class="stat-label">Avg Rating</div>
+    </div>
+</div>
+
+<!-- Daftar 114 Surah -->
+<div class="section-title"><i class="fas fa-book-quran"></i> Daftar Hafalan 114 Surah Al-Qur'an</div>
+<table style="font-size:8.5pt;">
+    <thead>
+        <tr>
+            <th style="width:30px; text-align:center;">No</th>
+            <th>Surah</th>
+            <th style="text-align:center; width:50px;">Ayat</th>
+            <th style="text-align:center; width:55px;">Dihafal</th>
+            <th style="width:100px;">Progress</th>
+            <th style="text-align:center; width:40px;">%</th>
+            <th style="text-align:center; width:45px;">Status</th>
+            <th style="text-align:center; width:50px;">Rating</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in rekap.all_surah %}
+        <tr style="{% if s.status == 'selesai' %}background:#E8F5E9;{% elif s.status == 'proses' %}background:#FFF8E1;{% endif %}">
+            <td style="text-align:center;">{{ s.nomor }}</td>
+            <td style="font-weight:{% if s.status != 'belum' %}600{% else %}400{% endif %};">{{ s.nama }}</td>
+            <td style="text-align:center;">{{ s.total_ayat }}</td>
+            <td style="text-align:center; font-weight:600;">{{ s.ayat_dihafal }}</td>
+            <td>
+                {% if s.ayat_dihafal > 0 %}
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill" style="width:{{ s.persen }}%; background:{% if s.persen >= 100 %}#2D6A4F{% elif s.persen >= 50 %}#FFC107{% else %}#1B4332{% endif %};"></div>
+                </div>
+                {% else %}
+                <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%;"></div></div>
+                {% endif %}
+            </td>
+            <td style="text-align:center; font-weight:600; font-size:8pt;">{{ "%.1f"|format(s.persen) }}%</td>
+            <td style="text-align:center;">
+                {% if s.status == 'selesai' %}
+                    <span style="color:#2D6A4F; font-weight:700;">&#10003;</span>
+                {% elif s.status == 'proses' %}
+                    <span style="color:#F59E0B; font-weight:700;">&#9679;</span>
+                {% else %}
+                    <span style="color:#D1D5DB;">—</span>
+                {% endif %}
+            </td>
+            <td style="text-align:center; font-weight:600;">
+                {% if s.avg_rating > 0 %}
+                    <span style="color:#F59E0B;">{{ "%.1f"|format(s.avg_rating) }}</span>
+                {% else %}
+                    <span style="color:#D1D5DB;">-</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Keterangan -->
+<div style="margin-top:8px; margin-bottom:10px; font-size:8pt; color:#6C757D; display:flex; gap:20px;">
+    <span><span style="color:#2D6A4F; font-weight:700;">&#10003;</span> = Selesai</span>
+    <span><span style="color:#F59E0B; font-weight:700;">&#9679;</span> = Sedang Proses</span>
+    <span><span style="color:#D1D5DB;">—</span> = Belum Mulai</span>
+    <span>Rating = Rata-rata nilai (skala 1–5)</span>
+</div>
+
+<!-- Footer / Tanda Tangan -->
+<div class="report-footer">
+    <div class="ttd-box">
+        <div class="ttd-title">Mengetahui,</div>
+        <div class="ttd-title">Guru Pembimbing</div>
+        <div class="ttd-space"></div>
+        <div class="ttd-name">{{ guru_nama }}</div>
+    </div>
+    <div class="ttd-box">
+        <div class="ttd-title">&nbsp;</div>
+        <div class="ttd-title">Siswa</div>
+        <div class="ttd-space"></div>
+        <div class="ttd-name">{{ rekap.siswa.nama }}</div>
+    </div>
+</div>
+
+<div class="watermark">
+    Dokumen ini digenerate otomatis oleh Sistem Monitoring Hafalan Al-Qur'an &bull; {{ tanggal_cetak }}
+</div>
+
+</body>
+</html>

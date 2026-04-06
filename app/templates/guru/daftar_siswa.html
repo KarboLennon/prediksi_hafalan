@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Daftar Siswa{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Daftar Siswa</h1>
+    <p>Klik siswa untuk melihat detail progress dan prediksi AI</p>
+</div>
+
+{% if alert %}
+<div class="alert alert-{{ alert.type }} alert-dismissible fade show" role="alert" style="margin-bottom:1rem;">
+    {{ alert.msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="app-card">
+    <div class="app-card-header dark">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2><i class="fas fa-users" style="margin-right:.5rem;"></i>Semua Siswa</h2>
+                <p>{{ siswa_list|length }} siswa terdaftar</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-card-body p-none">
+        {% if siswa_list %}
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px; text-align:center;">#</th>
+                        <th>Nama Siswa</th>
+                        <th>NIS</th>
+                        <th style="text-align:center;">Total Ayat</th>
+                        <th style="text-align:center;">Surah Aktif</th>
+                        <th style="text-align:center;">Hari Aktif</th>
+                        <th style="text-align:center;">Setoran</th>
+                        <th style="text-align:center;">Terakhir Setor</th>
+                        <th style="text-align:center;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in siswa_list %}
+                    <tr style="cursor:pointer;" onclick="window.location='/guru/siswa/{{ s.id }}'">
+                        <td style="text-align:center; color:var(--c-neutral);">{{ loop.index }}</td>
+                        <td>
+                            <span style="font-weight:600;">{{ s.nama }}</span>
+                        </td>
+                        <td style="color:var(--c-neutral); font-size:13px;">{{ s.nis or '—' }}</td>
+                        <td style="text-align:center;">
+                            {% if s.total_ayat > 0 %}
+                            <span class="tag dark">{{ s.total_ayat }}</span>
+                            {% else %}
+                            <span style="color:var(--c-neutral);">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if s.surah_aktif > 0 %}
+                            <span class="tag light">{{ s.surah_aktif }}</span>
+                            {% else %}
+                            <span style="color:var(--c-neutral);">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if s.hari_aktif > 0 %}
+                            <span style="font-weight:600;">{{ s.hari_aktif }}</span>
+                            {% else %}
+                            <span style="color:var(--c-neutral);">0</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if s.total_setoran > 0 %}
+                            {{ s.total_setoran }}×
+                            {% else %}
+                            <span style="color:var(--c-neutral);">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center; font-size:13px; color:var(--c-neutral);">
+                            {% if s.last_tanggal %}
+                            {{ s.last_tanggal }}
+                            {% else %}
+                            <span style="color:#dc3545;">Belum ada</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;" onclick="event.stopPropagation()">
+                            <a href="/guru/siswa/{{ s.id }}"
+                               class="btn-primary-app"
+                               style="padding:.35rem .8rem; font-size:12px;">
+                                <i class="fas fa-chart-line"></i> Detail
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-users"></i></div>
+            <h2 style="color:var(--c-neutral);">Belum ada siswa terdaftar</h2>
+            <p>Tambah siswa melalui menu Admin</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Detail — {{ siswa.nama }}{% endblock %}
+
+{% block content %}
+<!-- Back button + header -->
+<div class="page-header" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <a href="/guru/daftar-siswa" class="btn-outline-app" style="padding:.4rem .85rem; font-size:13px; white-space:nowrap;">
+        <i class="fas fa-arrow-left"></i> Kembali
+    </a>
+    <div>
+        <h1 style="margin:0;">{{ siswa.nama }}</h1>
+        <p style="margin:0;">NIS: {{ siswa.nis or '—' }} &nbsp;·&nbsp; Detail Progress &amp; Prediksi AI</p>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="/guru/rekap/cetak/{{ siswa.id }}" target="_blank"
+           class="btn-outline-app" style="padding:.4rem .85rem; font-size:13px;">
+            <i class="fas fa-print"></i> Cetak Rekap
+        </a>
+        <a href="/guru/input-hafalan?siswa_id={{ siswa.id }}"
+           class="btn-primary-app" style="padding:.4rem .85rem; font-size:13px;">
+            <i class="fas fa-plus"></i> Input Hafalan
+        </a>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon dark"><i class="fas fa-book-open"></i></div>
+                <div class="stat-val">{{ total_ayat_dihafal }}</div>
+                <p class="stat-label">Total Ayat Dihafal</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon dark"><i class="fas fa-list"></i></div>
+                <div class="stat-val">{{ total_surah_aktif }}</div>
+                <p class="stat-label">Surah Aktif</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon accent"><i class="fas fa-calendar-check"></i></div>
+                <div class="stat-val">{{ total_hari }}</div>
+                <p class="stat-label">Hari Aktif</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="app-card">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:var(--c-accent);">
+                    <i class="fas fa-star" style="color:var(--c-primary);"></i>
+                </div>
+                <div class="stat-val">
+                    {% if avg_rating > 0 %}
+                    {{ avg_rating }}<span style="font-size:.75rem; color:var(--c-neutral); font-weight:500;">/5</span>
+                    {% else %}—{% endif %}
+                </div>
+                <p class="stat-label">Rata-rata Rating</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prediksi AI -->
+{% if prediksi_list %}
+<div class="app-card mb-4">
+    <div class="app-card-header dark">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2>🤖 Estimasi AI — Random Forest</h2>
+                <p>Prediksi waktu penyelesaian hafalan per surah</p>
+            </div>
+            <span class="tag light" style="font-size:12px;">{{ prediksi_list|length }} surah</span>
+        </div>
+    </div>
+    <div class="app-card-body p-none">
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Surah</th>
+                        <th style="text-align:center; width:160px;">Progress</th>
+                        <th style="text-align:center;">Ayat</th>
+                        <th style="text-align:center;">Estimasi Selesai</th>
+                        <th style="text-align:center;">Kecepatan</th>
+                        <th style="text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pred in prediksi_list %}
+                    <tr>
+                        <td style="font-weight:600;">{{ pred.nama_surah }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" data-width="{{ pred.progress_persen }}"
+                                     style="width:0%;" title="{{ pred.progress_persen }}%"></div>
+                            </div>
+                            <div style="text-align:center; font-size:11px; color:var(--c-neutral); margin-top:.25rem;">
+                                {{ pred.progress_persen }}%
+                            </div>
+                        </td>
+                        <td style="text-align:center; color:var(--c-neutral);">
+                            {{ pred.ayat_sudah }}/{{ pred.total_ayat }}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if pred.sisa_ayat > 0 %}
+                            <span class="tag dark">{{ pred.estimasi_low }}–{{ pred.estimasi_high }} hari</span>
+                            <div style="font-size:11px; color:var(--c-neutral); margin-top:.2rem;">
+                                sisa {{ pred.sisa_ayat }} ayat
+                            </div>
+                            {% else %}
+                            <span class="tag accent">✓ Selesai</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if pred.sisa_ayat > 0 %}
+                            <span class="tag neutral">~{{ pred.prediksi_ayat_per_hari }} ayat/hari</span>
+                            {% else %}
+                            <span style="color:var(--c-neutral);">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if pred.sisa_ayat > 0 %}
+                            <span style="color:var(--c-accent);" title="{{ pred.insight }}">
+                                <i class="fas fa-clock"></i>
+                            </span>
+                            {% else %}
+                            <span style="color:#166534;"><i class="fas fa-circle-check"></i></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Progress Per Surah -->
+{% if progress %}
+<div class="app-card mb-4">
+    <div class="app-card-header accent">
+        <h2>📖 Progress Per Surah</h2>
+        <p>Hafalan yang sudah disetor oleh siswa</p>
+    </div>
+    <div class="app-card-body p-none">
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Surah</th>
+                        <th style="text-align:center; width:160px;">Progress</th>
+                        <th style="text-align:center;">Ayat Dihafal</th>
+                        <th style="text-align:center;">Hari Aktif</th>
+                        <th style="text-align:center;">Rating Terakhir</th>
+                        <th style="text-align:center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in progress %}
+                    <tr>
+                        <td style="font-weight:600;">{{ p.nama_surah }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar{% if p.persen >= 100 %} done{% endif %}"
+                                     data-width="{{ p.persen }}" style="width:0%;"
+                                     title="{{ p.persen }}%"></div>
+                            </div>
+                            <div style="text-align:center; font-size:11px; color:var(--c-neutral); margin-top:.25rem;">
+                                {{ p.persen }}%
+                            </div>
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="tag {% if p.persen >= 100 %}accent{% else %}dark{% endif %}">
+                                {{ p.ayat_dihafal }}/{{ p.total_ayat }}
+                            </span>
+                        </td>
+                        <td style="text-align:center; color:var(--c-neutral);">{{ p.hari_aktif }}×</td>
+                        <td style="text-align:center; white-space:nowrap;">
+                            {% if p.last_rating > 0 %}
+                            {% for i in range(1, 6) %}
+                            <i class="fas fa-star" style="font-size:11px; color:{% if i <= p.last_rating %}#FFC107{% else %}#e2e8f0{% endif %};"></i>
+                            {% endfor %}
+                            {% else %}
+                            <span style="color:var(--c-neutral); font-size:12px;">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:center;">
+                            {% if p.persen >= 100 %}
+                            <span class="tag accent" style="font-weight:600;">Selesai</span>
+                            {% else %}
+                            <span class="tag light">Proses</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Riwayat Setoran Terbaru -->
+<div class="app-card mb-4">
+    <div class="app-card-header" style="background:var(--c-bg); border-bottom:1px solid var(--c-border);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2 style="color:var(--c-primary);">📋 Riwayat Setoran Terbaru</h2>
+                <p>20 setoran terakhir</p>
+            </div>
+        </div>
+    </div>
+    <div class="app-card-body p-none">
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="app-table">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Surah</th>
+                        <th style="text-align:center;">Ayat</th>
+                        <th style="text-align:center;">Jumlah</th>
+                        <th style="text-align:center;">Rating</th>
+                        <th>Guru</th>
+                        <th>Catatan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td style="white-space:nowrap; color:var(--c-neutral); font-size:13px;">{{ log.tanggal }}</td>
+                        <td style="font-weight:600;">{{ log.nama_surah }}</td>
+                        <td style="text-align:center; font-size:13px;">
+                            {{ log.ayat_mulai }}–{{ log.ayat_selesai }}
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="tag dark">{{ log.jumlah_ayat }} ayat</span>
+                        </td>
+                        <td style="text-align:center; white-space:nowrap;">
+                            {% if log.rating and log.rating > 0 %}
+                            {% for i in range(1, 6) %}
+                            <i class="fas fa-star" style="font-size:11px; color:{% if i <= log.rating %}#FFC107{% else %}#e2e8f0{% endif %};"></i>
+                            {% endfor %}
+                            {% else %}
+                            <span style="color:var(--c-neutral); font-size:12px;">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:13px; color:var(--c-neutral);">{{ log.nama_guru }}</td>
+                        <td style="font-size:13px; color:var(--c-neutral);">
+                            {{ log.catatan or '—' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+            <h2 style="color:var(--c-neutral);">Belum ada riwayat setoran</h2>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.progress-bar[data-width]').forEach(el => {
+    el.style.width = el.dataset.width + '%';
+});
+</script>
+{% endblock %}

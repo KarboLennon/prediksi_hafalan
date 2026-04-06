@@ -40,7 +40,7 @@
 </div>
 
 <!-- Main Content -->
-<div class="row g-4" style="padding: 0px 65px;">
+<div class="row g-4">
     <!-- Form Tambah User -->
     <div class="col-xl-5 col-lg-5">
         <div class="app-card">
@@ -64,11 +64,11 @@
                                placeholder="Masukkan nama lengkap" required>
                     </div>
 
-                    <div id="nisnGroup" style="margin-bottom:1.1rem;">
-                        <label class="form-label">NISN</label>
-                        <input type="text" name="nisn" id="nisnInput" class="form-control"
-                               placeholder="10 digit NISN" maxlength="20">
-                        <p class="form-hint">Password default = NISN</p>
+                    <div id="nisGroup" style="margin-bottom:1.1rem;">
+                        <label class="form-label">NIS</label>
+                        <input type="text" name="nis" id="nisInput" class="form-control"
+                               placeholder="Nomor Induk Siswa" maxlength="20">
+                        <p class="form-hint">Password default = NIS</p>
                     </div>
 
                     <div id="nuptkGroup" style="margin-bottom:1.1rem; display:none;">
@@ -88,7 +88,7 @@
 
                     <div class="app-alert info" style="margin-bottom:1.25rem;">
                         <i class="fas fa-circle-info"></i>
-                        <span>Password otomatis = <strong id="pwInfo">NISN</strong>. User wajib ganti saat login pertama.</span>
+                        <span>Password otomatis = <strong id="pwInfo">NIS</strong>. User wajib ganti saat login pertama.</span>
                     </div>
 
                     <button type="submit" class="btn-primary-app w-100" style="justify-content:center; padding:.65rem;">
@@ -130,8 +130,8 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if u.nisn %}
-                                    <span class="tag light">NISN: {{ u.nisn }}</span>
+                                    {% if u.nis %}
+                                    <span class="tag light">NIS: {{ u.nis }}</span>
                                     {% elif u.nuptk %}
                                     <span class="tag light">NUPTK: {{ u.nuptk }}</span>
                                     {% else %}
@@ -182,26 +182,26 @@
 {% block scripts %}
 <script>
 const roleSelect  = document.getElementById('roleSelect');
-const nisnGroup   = document.getElementById('nisnGroup');
+const nisGroup    = document.getElementById('nisGroup');
 const nuptkGroup  = document.getElementById('nuptkGroup');
-const nisnInput   = document.getElementById('nisnInput');
+const nisInput    = document.getElementById('nisInput');
 const nuptkInput  = document.getElementById('nuptkInput');
 const pwInfo      = document.getElementById('pwInfo');
 
 function toggleFields() {
     if (roleSelect.value === 'siswa') {
-        nisnGroup.style.display  = 'block';
+        nisGroup.style.display   = 'block';
         nuptkGroup.style.display = 'none';
-        nisnInput.required  = true;
+        nisInput.required   = true;
         nuptkInput.required = false;
         nuptkInput.value    = '';
-        pwInfo.textContent  = 'NISN';
+        pwInfo.textContent  = 'NIS';
     } else {
-        nisnGroup.style.display  = 'none';
+        nisGroup.style.display   = 'none';
         nuptkGroup.style.display = 'block';
-        nisnInput.required  = false;
+        nisInput.required   = false;
         nuptkInput.required = true;
-        nisnInput.value     = '';
+        nisInput.value      = '';
         pwInfo.textContent  = 'NUPTK';
     }
 }

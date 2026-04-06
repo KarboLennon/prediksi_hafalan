@@ -111,11 +111,11 @@ def hash_password(password: str) -> str:
 
 
 def find_user_by_identifier(identifier: str):
-    """Cari user berdasarkan email, NISN, atau NUPTK."""
+    """Cari user berdasarkan email, NIS, atau NUPTK."""
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
-        "SELECT * FROM users WHERE email = %s OR nisn = %s OR nuptk = %s",
+        "SELECT * FROM users WHERE email = %s OR nis = %s OR nuptk = %s",
         (identifier, identifier, identifier)
     )
     user = cur.fetchone()

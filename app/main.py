@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from datetime import date, datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 import hmac
 import hashlib
 import json
@@ -114,12 +114,12 @@ def login_page(request: Request):
 
 @app.post("/login", response_class=HTMLResponse)
 def login(request: Request, identifier: str = Form(...), password: str = Form(...)):
-    # Cari user by email, NISN, atau NUPTK
+    # Cari user by email, NIS, atau NUPTK
     user = find_user_by_identifier(identifier)
 
     if not user or user["password"] != hash_password(password):
         return templates.TemplateResponse("login.html", {
-            "request": request, "user": None, "error": "NISN/NUPTK/Email atau password salah"
+            "request": request, "user": None, "error": "NIS/NUPTK/Email atau password salah"
         })
 
     # Cek apakah harus ganti password dulu
@@ -230,7 +230,7 @@ def admin_tambah_user(
     request: Request,
     nama: str = Form(...),
     role: str = Form(...),
-    nisn: Optional[str] = Form(None),
+    nis: Optional[str] = Form(None),
     nuptk: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
 ):
@@ -241,24 +241,26 @@ def admin_tambah_user(
     if role not in ("guru", "siswa"):
         return RedirectResponse("/admin?alert=danger&msg=Role tidak valid", status_code=302)
 
-    # Validasi: siswa harus punya NISN, guru harus punya NUPTK
+    default_password = ""  # Will be set based on role
+
+    # Validasi: siswa harus punya NIS, guru harus punya NUPTK
     if role == "siswa":
-        if not nisn or not nisn.strip():
-            return RedirectResponse("/admin?alert=danger&msg=NISN wajib diisi untuk siswa", status_code=302)
-        nisn = nisn.strip()
+        if not nis or not nis.strip():
+            return RedirectResponse("/admin?alert=danger&msg=NIS wajib diisi untuk siswa", status_code=302)
+        nis = nis.strip()
         nuptk = None
-        # Cek duplikat NISN
-        existing = db_fetchone("SELECT id FROM users WHERE nisn = %s", (nisn,))
+        # Cek duplikat NIS
+        existing = db_fetchone("SELECT id FROM users WHERE nis = %s", (nis,))
         if existing:
-            return RedirectResponse("/admin?alert=danger&msg=NISN sudah terdaftar", status_code=302)
-        # Password default = NISN
-        default_password = nisn
+            return RedirectResponse("/admin?alert=danger&msg=NIS sudah terdaftar", status_code=302)
+        # Password default = NIS
+        default_password = nis
 
     elif role == "guru":
         if not nuptk or not nuptk.strip():
             return RedirectResponse("/admin?alert=danger&msg=NUPTK wajib diisi untuk guru", status_code=302)
         nuptk = nuptk.strip()
-        nisn = None
+        nis = None
         # Cek duplikat NUPTK
         existing = db_fetchone("SELECT id FROM users WHERE nuptk = %s", (nuptk,))
         if existing:
@@ -274,11 +276,11 @@ def admin_tambah_user(
             return RedirectResponse("/admin?alert=danger&msg=Email sudah terdaftar", status_code=302)
 
     db_execute(
-        "INSERT INTO users (nama, nisn, nuptk, email, password, must_change_password, role) VALUES (%s, %s, %s, %s, %s, 1, %s)",
-        (nama, nisn, nuptk, email, hash_password(default_password), role)
+        "INSERT INTO users (nama, nis, nuptk, email, password, must_change_password, role) VALUES (%s, %s, %s, %s, %s, 1, %s)",
+        (nama, nis, nuptk, email, hash_password(default_password), role)
     )
 
-    id_label = f"NISN: {nisn}" if role == "siswa" else f"NUPTK: {nuptk}"
+    id_label = f"NIS: {nis}" if role == "siswa" else f"NUPTK: {nuptk}"
     return RedirectResponse(
         f"/admin?alert=success&msg={nama} berhasil ditambahkan ({id_label}). Password default = {default_password}",
         status_code=302
@@ -301,12 +303,12 @@ def admin_hapus_user(request: Request, user_id: int):
     cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
     conn.commit()
     conn.close()
-    return RedirectResponse(f"/admin?alert=success&msg=User berhasil dihapus", status_code=302)
+    return RedirectResponse("/admin?alert=success&msg=User berhasil dihapus", status_code=302)
 
 
 @app.post("/admin/reset-password/{user_id}")
 def admin_reset_password(request: Request, user_id: int):
-    """Reset password user ke NISN/NUPTK dan paksa ganti password."""
+    """Reset password user ke NIS/NUPTK dan paksa ganti password."""
     user = require_role(request, "admin")
     if not user:
         return RedirectResponse("/login", status_code=302)
@@ -315,13 +317,13 @@ def admin_reset_password(request: Request, user_id: int):
     if not target or target["role"] == "admin":
         return RedirectResponse("/admin?alert=danger&msg=Tidak bisa reset user ini", status_code=302)
 
-    # Reset ke NISN atau NUPTK
-    if target["role"] == "siswa" and target.get("nisn"):
-        new_pw = target["nisn"]
+    # Reset ke NIS atau NUPTK
+    if target["role"] == "siswa" and target.get("nis"):
+        new_pw = target["nis"]
     elif target["role"] == "guru" and target.get("nuptk"):
         new_pw = target["nuptk"]
     else:
-        return RedirectResponse("/admin?alert=danger&msg=User tidak punya NISN/NUPTK", status_code=302)
+        return RedirectResponse("/admin?alert=danger&msg=User tidak punya NIS/NUPTK", status_code=302)
 
     db_execute(
         "UPDATE users SET password = %s, must_change_password = 1 WHERE id = %s",
@@ -358,14 +360,14 @@ def guru_dashboard(request: Request):
     lb_tahun = int(request.query_params.get("lb_tahun", now_wib.year))
 
     leaderboard_hari = db_fetchall("""
-        SELECT u.nama, SUM(h.jumlah_ayat) AS total_ayat, COUNT(h.id) AS total_setoran
+        SELECT u.id AS siswa_id, u.nama, SUM(h.jumlah_ayat) AS total_ayat, COUNT(h.id) AS total_setoran
         FROM hafalan_log h JOIN users u ON u.id = h.siswa_id
         WHERE h.tanggal = %s
         GROUP BY h.siswa_id ORDER BY total_ayat DESC LIMIT 10
     """, (today_str,))
 
     leaderboard_bulan = db_fetchall("""
-        SELECT u.nama, SUM(h.jumlah_ayat) AS total_ayat, COUNT(h.id) AS total_setoran,
+        SELECT u.id AS siswa_id, u.nama, SUM(h.jumlah_ayat) AS total_ayat, COUNT(h.id) AS total_setoran,
                COUNT(DISTINCT h.tanggal) AS hari_aktif
         FROM hafalan_log h JOIN users u ON u.id = h.siswa_id
         WHERE MONTH(h.tanggal) = %s AND YEAR(h.tanggal) = %s
@@ -504,6 +506,300 @@ def guru_ubah_password_post(
     return RedirectResponse("/guru/ubah-password?alert=success&msg=Password berhasil diubah", status_code=302)
 
 
+# ============================
+# GURU — REKAP / LAPORAN
+# ============================
+@app.get("/guru/rekap", response_class=HTMLResponse)
+def guru_rekap(request: Request):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    daftar_siswa = db_fetchall("SELECT id, nama FROM users WHERE role='siswa' ORDER BY nama")
+
+    siswa_id = request.query_params.get("siswa_id")
+    rekap = None
+    selected_siswa = int(siswa_id) if siswa_id else None
+
+    if selected_siswa:
+        rekap = _build_rekap(selected_siswa)
+
+    return templates.TemplateResponse("guru/rekap.html", {
+        "request": request, "user": user, "alert": _get_alert(request),
+        "active_page": "rekap",
+        "daftar_siswa": daftar_siswa,
+        "rekap": rekap,
+        "selected_siswa": selected_siswa,
+    })
+
+
+@app.get("/guru/rekap/cetak/{siswa_id}", response_class=HTMLResponse)
+def guru_rekap_cetak(request: Request, siswa_id: int):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    rekap = _build_rekap(siswa_id)
+    if not rekap:
+        return RedirectResponse("/guru/rekap?alert=danger&msg=Data tidak ditemukan", status_code=302)
+
+    now_wib = datetime.now(WIB)
+    tanggal_cetak = now_wib.strftime("%d %B %Y")
+
+    return templates.TemplateResponse("guru/rekap_cetak.html", {
+        "request": request,
+        "rekap": rekap,
+        "guru_nama": user["nama"],
+        "tanggal_cetak": tanggal_cetak,
+    })
+
+
+def _build_rekap(siswa_id: int):
+    """Build rekap data for a specific student (total keseluruhan)."""
+    siswa = db_fetchone("SELECT id, nama, nis FROM users WHERE id = %s AND role = 'siswa'", (siswa_id,))
+    if not siswa:
+        return None
+
+    params = [siswa_id]
+
+    # Logs detail
+    logs_raw = db_fetchall("""
+        SELECT h.*, u.nama AS nama_guru
+        FROM hafalan_log h
+        JOIN users u ON u.id = h.guru_id
+        WHERE h.siswa_id = %s
+        ORDER BY h.tanggal ASC, h.created_at ASC
+    """, params)
+
+    logs = []
+    for log in logs_raw:
+        log["nama_surah"] = get_surah_name(log["surah_id"])
+        logs.append(log)
+
+    # Progress per surah
+    progress_raw = db_fetchall("""
+        SELECT surah_id,
+               SUM(jumlah_ayat) AS ayat_dihafal,
+               COUNT(id) AS hari_aktif
+        FROM hafalan_log h
+        WHERE h.siswa_id = %s
+        GROUP BY surah_id ORDER BY surah_id
+    """, params)
+
+    progress = []
+    for p in progress_raw:
+        surah = get_surah(p["surah_id"])
+        total_ayat = surah["jumlah_ayat"] if surah else 1
+        persen = round(p["ayat_dihafal"] / total_ayat * 100, 1)
+
+        # Last rating for this surah
+        lr_row = db_fetchone(
+            "SELECT rating FROM hafalan_log WHERE siswa_id = %s AND surah_id = %s AND rating > 0 ORDER BY tanggal DESC, created_at DESC LIMIT 1",
+            (siswa_id, p["surah_id"])
+        )
+        last_rating = lr_row["rating"] if lr_row and lr_row.get("rating") else 0
+
+        progress.append({
+            "surah_id": p["surah_id"],
+            "nama_surah": get_surah_name(p["surah_id"]),
+            "total_ayat": total_ayat,
+            "ayat_dihafal": int(p["ayat_dihafal"]),
+            "hari_aktif": p["hari_aktif"],
+            "persen": min(persen, 100.0),
+            "last_rating": last_rating,
+        })
+
+    # Stats
+    total_ayat = sum(p["ayat_dihafal"] for p in progress) if progress else 0
+    total_setoran = len(logs)
+    hari_aktif_row = db_fetchone(
+        "SELECT COUNT(DISTINCT tanggal) AS c FROM hafalan_log WHERE siswa_id = %s",
+        (siswa_id,)
+    )
+    hari_aktif = hari_aktif_row["c"] if hari_aktif_row else 0
+
+    avg_rating_row = db_fetchone(
+        "SELECT ROUND(AVG(rating), 1) AS avg_r FROM hafalan_log WHERE siswa_id = %s AND rating > 0",
+        (siswa_id,)
+    )
+    avg_rating = float(avg_rating_row["avg_r"]) if avg_rating_row and avg_rating_row["avg_r"] else 0
+
+    # Build all 114 surah list with progress & avg rating
+    # Create lookup from progress data
+    progress_map = {p["surah_id"]: p for p in progress}
+
+    # Get avg rating per surah for this student
+    avg_rating_per_surah = {}
+    rating_rows = db_fetchall(
+        "SELECT surah_id, ROUND(AVG(rating), 1) AS avg_r FROM hafalan_log WHERE siswa_id = %s AND rating > 0 GROUP BY surah_id",
+        (siswa_id,)
+    )
+    for rr in rating_rows:
+        avg_rating_per_surah[rr["surah_id"]] = float(rr["avg_r"]) if rr["avg_r"] else 0
+
+    surah_list = get_surah_list()
+    all_surah = []
+    for s in surah_list:
+        sid = s["id"]
+        p = progress_map.get(sid)
+        ayat_dihafal = p["ayat_dihafal"] if p else 0
+        total_ayat = s["jumlah_ayat"]
+        persen = min(round(ayat_dihafal / total_ayat * 100, 1), 100.0) if total_ayat > 0 else 0
+
+        if persen >= 100:
+            status = "selesai"
+        elif ayat_dihafal > 0:
+            status = "proses"
+        else:
+            status = "belum"
+
+        all_surah.append({
+            "nomor": sid,
+            "nama": s["nama"],
+            "total_ayat": total_ayat,
+            "ayat_dihafal": ayat_dihafal,
+            "persen": persen,
+            "status": status,
+            "avg_rating": avg_rating_per_surah.get(sid, 0),
+        })
+
+    return {
+        "siswa": siswa,
+        "logs": logs,
+        "progress": progress,
+        "all_surah": all_surah,
+        "stats": {
+            "total_ayat": total_ayat,
+            "total_surah": len(progress),
+            "total_setoran": total_setoran,
+            "hari_aktif": hari_aktif,
+            "avg_rating": avg_rating,
+        },
+    }
+
+
+# ============================
+# GURU — DAFTAR SISWA
+# ============================
+@app.get("/guru/daftar-siswa", response_class=HTMLResponse)
+def guru_daftar_siswa(request: Request):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    siswa_list = db_fetchall("""
+        SELECT
+            u.id, u.nama, u.nis,
+            COALESCE(s.total_ayat, 0)    AS total_ayat,
+            COALESCE(s.surah_aktif, 0)   AS surah_aktif,
+            COALESCE(s.hari_aktif, 0)    AS hari_aktif,
+            COALESCE(s.total_setoran, 0) AS total_setoran,
+            s.last_tanggal
+        FROM users u
+        LEFT JOIN (
+            SELECT
+                siswa_id,
+                SUM(jumlah_ayat)            AS total_ayat,
+                COUNT(DISTINCT surah_id)    AS surah_aktif,
+                COUNT(DISTINCT tanggal)     AS hari_aktif,
+                COUNT(id)                   AS total_setoran,
+                MAX(tanggal)                AS last_tanggal
+            FROM hafalan_log
+            GROUP BY siswa_id
+        ) s ON s.siswa_id = u.id
+        WHERE u.role = 'siswa'
+        ORDER BY total_ayat DESC, u.nama ASC
+    """)
+
+    return templates.TemplateResponse("guru/daftar_siswa.html", {
+        "request": request, "user": user, "alert": _get_alert(request),
+        "active_page": "daftar_siswa",
+        "siswa_list": siswa_list,
+    })
+
+
+# ============================
+# GURU — DETAIL SISWA
+# ============================
+@app.get("/guru/siswa/{siswa_id}", response_class=HTMLResponse)
+def guru_detail_siswa(request: Request, siswa_id: int):
+    user = require_role(request, "guru")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    siswa = db_fetchone("SELECT id, nama, nis FROM users WHERE id = %s AND role = 'siswa'", (siswa_id,))
+    if not siswa:
+        return RedirectResponse("/guru/daftar-siswa?alert=danger&msg=Siswa tidak ditemukan", status_code=302)
+
+    # Progress per surah
+    progress_raw = db_fetchall("""
+        SELECT surah_id, SUM(jumlah_ayat) AS ayat_dihafal, COUNT(id) AS hari_aktif
+        FROM hafalan_log
+        WHERE siswa_id = %s
+        GROUP BY surah_id ORDER BY surah_id
+    """, (siswa_id,))
+
+    progress = []
+    for p in progress_raw:
+        surah = get_surah(p["surah_id"])
+        total_ayat = surah["jumlah_ayat"] if surah else 1
+        persen = round(p["ayat_dihafal"] / total_ayat * 100, 1)
+        lr_row = db_fetchone(
+            "SELECT rating FROM hafalan_log WHERE siswa_id = %s AND surah_id = %s AND rating > 0 ORDER BY tanggal DESC, created_at DESC LIMIT 1",
+            (siswa_id, p["surah_id"])
+        )
+        progress.append({
+            "surah_id": p["surah_id"],
+            "nama_surah": get_surah_name(p["surah_id"]),
+            "total_ayat": total_ayat,
+            "ayat_dihafal": int(p["ayat_dihafal"]),
+            "hari_aktif": p["hari_aktif"],
+            "persen": min(persen, 100.0),
+            "last_rating": lr_row["rating"] if lr_row and lr_row["rating"] else 0,
+        })
+
+    # Stats
+    total_ayat_dihafal = sum(p["ayat_dihafal"] for p in progress)
+    total_hari_row = db_fetchone("SELECT COUNT(DISTINCT tanggal) AS c FROM hafalan_log WHERE siswa_id = %s", (siswa_id,))
+    total_hari = total_hari_row["c"] if total_hari_row else 0
+    avg_rating_row = db_fetchone(
+        "SELECT ROUND(AVG(rating), 1) AS avg_r FROM hafalan_log WHERE siswa_id = %s AND rating > 0", (siswa_id,)
+    )
+    avg_rating = float(avg_rating_row["avg_r"]) if avg_rating_row and avg_rating_row["avg_r"] else 0
+
+    # Prediksi AI untuk semua surah aktif
+    prediksi_list = []
+    for p in progress:
+        pred = prediksi_hafalan(siswa_id, p["surah_id"])
+        if pred:
+            prediksi_list.append(pred)
+
+    # Riwayat setoran terbaru (20 terakhir)
+    logs_raw = db_fetchall("""
+        SELECT h.*, u.nama AS nama_guru
+        FROM hafalan_log h
+        JOIN users u ON u.id = h.guru_id
+        WHERE h.siswa_id = %s
+        ORDER BY h.tanggal DESC, h.created_at DESC
+        LIMIT 20
+    """, (siswa_id,))
+    for log in logs_raw:
+        log["nama_surah"] = get_surah_name(log["surah_id"])
+
+    return templates.TemplateResponse("guru/detail_siswa.html", {
+        "request": request, "user": user,
+        "active_page": "daftar_siswa",
+        "siswa": siswa,
+        "progress": progress,
+        "prediksi_list": prediksi_list,
+        "logs": logs_raw,
+        "total_ayat_dihafal": total_ayat_dihafal,
+        "total_surah_aktif": len(progress),
+        "total_hari": total_hari,
+        "avg_rating": avg_rating,
+    })
+
+
 @app.post("/guru/input-hafalan")
 def guru_input_hafalan(
     request: Request,
@@ -512,6 +808,7 @@ def guru_input_hafalan(
     ayat_mulai: int = Form(...),
     ayat_selesai: int = Form(...),
     catatan: Optional[str] = Form(None),
+    rating: int = Form(0),
 ):
     user = require_role(request, "guru")
     if not user:
@@ -533,9 +830,10 @@ def guru_input_hafalan(
     jumlah = ayat_selesai - ayat_mulai + 1
     tanggal = datetime.now(WIB).strftime("%Y-%m-%d")
 
+    rating = max(0, min(5, rating))
     db_execute(
-        "INSERT INTO hafalan_log (siswa_id, guru_id, surah_id, ayat_mulai, ayat_selesai, jumlah_ayat, catatan, tanggal) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-        (siswa_id, user["id"], surah_id, ayat_mulai, ayat_selesai, jumlah, catatan or None, tanggal)
+        "INSERT INTO hafalan_log (siswa_id, guru_id, surah_id, ayat_mulai, ayat_selesai, jumlah_ayat, catatan, tanggal, rating) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        (siswa_id, user["id"], surah_id, ayat_mulai, ayat_selesai, jumlah, catatan or None, tanggal, rating)
     )
     return RedirectResponse(f"/guru/input-hafalan?alert=success&msg=Hafalan berhasil disimpan ({jumlah} ayat)", status_code=302)
 
@@ -548,6 +846,7 @@ def guru_edit_hafalan(
     ayat_mulai: int = Form(...),
     ayat_selesai: int = Form(...),
     catatan: Optional[str] = Form(None),
+    rating: int = Form(0),
 ):
     user = require_role(request, "guru")
     if not user:
@@ -572,11 +871,12 @@ def guru_edit_hafalan(
         )
 
     jumlah = ayat_selesai - ayat_mulai + 1
+    rating = max(0, min(5, rating))
     db_execute(
-        "UPDATE hafalan_log SET surah_id=%s, ayat_mulai=%s, ayat_selesai=%s, jumlah_ayat=%s, catatan=%s WHERE id=%s",
-        (surah_id, ayat_mulai, ayat_selesai, jumlah, catatan or None, log_id)
+        "UPDATE hafalan_log SET surah_id=%s, ayat_mulai=%s, ayat_selesai=%s, jumlah_ayat=%s, catatan=%s, rating=%s WHERE id=%s",
+        (surah_id, ayat_mulai, ayat_selesai, jumlah, catatan or None, rating, log_id)
     )
-    return RedirectResponse(f"/guru/input-hafalan?alert=success&msg=Log hafalan berhasil diperbarui", status_code=302)
+    return RedirectResponse("/guru/input-hafalan?alert=success&msg=Log hafalan berhasil diperbarui", status_code=302)
 
 
 # ============================
@@ -631,6 +931,37 @@ def siswa_dashboard(request: Request):
         (user["id"],)
     )
     total_hari = total_hari_row["c"] if total_hari_row else 0
+
+    # Rata-rata rating (hanya yang sudah dinilai, rating > 0)
+    avg_rating_row = db_fetchone(
+        "SELECT ROUND(AVG(rating), 1) AS avg_r FROM hafalan_log WHERE siswa_id = %s AND rating > 0",
+        (user["id"],)
+    )
+    avg_rating = float(avg_rating_row["avg_r"]) if avg_rating_row and avg_rating_row["avg_r"] else 0
+
+    # Surah yang sudah selesai (progress >= 100%)
+    surah_selesai = []
+    for p in progress:
+        if p["persen"] >= 100:
+            # Ambil rating terakhir untuk surah ini
+            sid = None
+            for s_id, s_data in db_module.SURAH_DICT.items():
+                if s_data["nama"] == p["nama_surah"]:
+                    sid = s_id
+                    break
+            last_rating = 0
+            if sid:
+                lr_row = db_fetchone(
+                    "SELECT rating FROM hafalan_log WHERE siswa_id = %s AND surah_id = %s ORDER BY tanggal DESC, created_at DESC LIMIT 1",
+                    (user["id"], sid)
+                )
+                if lr_row and lr_row["rating"]:
+                    last_rating = lr_row["rating"]
+            surah_selesai.append({
+                "nama_surah": p["nama_surah"],
+                "total_ayat": p["total_ayat"],
+                "last_rating": last_rating,
+            })
 
     # Build query for riwayat with filter
     where_clause = "h.siswa_id = %s"
@@ -725,6 +1056,8 @@ def siswa_dashboard(request: Request):
         "total_ayat_dihafal": total_ayat_dihafal,
         "total_surah_aktif": total_surah_aktif,
         "total_hari": total_hari,
+        "avg_rating": avg_rating,
+        "surah_selesai": surah_selesai,
         "prediksi_list": prediksi_list,
         "alert": None,
         # Pagination data for riwayat
@@ -752,6 +1085,26 @@ def siswa_dashboard(request: Request):
         "ai_filter_surah": ai_filter_surah,
         "ai_surah_options": ai_surah_options,
         "active_page": "dashboard",
+    })
+
+
+# ============================
+# SISWA — REKAP HAFALAN
+# ============================
+@app.get("/siswa/rekap", response_class=HTMLResponse)
+def siswa_rekap(request: Request):
+    user = require_role(request, "siswa")
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    rekap = _build_rekap(user["id"])
+    now_wib = datetime.now(WIB)
+    tanggal_cetak = now_wib.strftime("%d %B %Y")
+
+    return templates.TemplateResponse("siswa/rekap_cetak.html", {
+        "request": request,
+        "rekap": rekap,
+        "tanggal_cetak": tanggal_cetak,
     })
 
 
@@ -838,6 +1191,31 @@ def siswa_ubah_password_post(
 
     db_execute("UPDATE users SET password = %s WHERE id = %s", (hash_password(password_baru), user["id"]))
     return RedirectResponse("/siswa/ubah-password?alert=success&msg=Password berhasil diubah", status_code=302)
+
+
+# ============================
+# API SEARCH SISWA (autocomplete)
+# ============================
+@app.get("/api/search-siswa")
+def api_search_siswa(request: Request, q: str = ""):
+    user = get_session(request)
+    if not user:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    q = q.strip()
+    if len(q) < 2:
+        return JSONResponse([])
+
+    # Multi-keyword: "andi saputra" → AND nama LIKE '%andi%' AND nama LIKE '%saputra%'
+    keywords = q.split()
+    conditions = " AND ".join(["nama LIKE %s"] * len(keywords))
+    params = [f"%{kw}%" for kw in keywords] + [10]
+
+    results = db_fetchall(
+        f"SELECT id, nama FROM users WHERE role='siswa' AND {conditions} ORDER BY nama LIMIT %s",
+        params
+    )
+    return JSONResponse([{"id": r["id"], "nama": r["nama"]} for r in results])
 
 
 # ============================
