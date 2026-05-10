@@ -45,9 +45,10 @@ def get_surah_features(surah_id: int) -> dict:
     ayat_surah = ayat_df[ayat_df["surah"].astype(int) == surah_id]
 
     return {
-        "total_ayat_surah": surah["jumlah_ayat"],
+        "total_ayat_surah":   surah["jumlah_ayat"],
         "rata_kata_per_ayat": float(ayat_surah["kata"].mean()) if len(ayat_surah) > 0 else 5.0,
-        "rata_huruf_per_ayat": float(ayat_surah["huruf"].mean()) if len(ayat_surah) > 0 else 20.0,
+        "rata_huruf_per_ayat":float(ayat_surah["huruf"].mean()) if len(ayat_surah) > 0 else 20.0,
+        "std_kata_per_ayat":  float(ayat_surah["kata"].std())  if len(ayat_surah) > 1 else 0.0,
     }
 
 
@@ -99,11 +100,17 @@ def get_siswa_history(siswa_id: int, surah_id: int) -> dict:
     recent_3 = ayat_list[-3:] if n >= 3 else ayat_list
     rolling_mean_3 = float(np.mean(recent_3))
 
+    recent_7 = ayat_list[-7:] if n >= 7 else ayat_list
+    kecepatan_7hari = float(np.mean(recent_7))
+    std_kecepatan   = float(np.std(ayat_list)) if n > 1 else 0.0
+
     return {
         "hari_ke": hari_ke + 1,
         "ayat_sudah_dihafal": ayat_sudah,
         "progress_persen": 0.0,
         "kecepatan_avg_sebelumnya": avg_speed,
+        "std_kecepatan": std_kecepatan,
+        "kecepatan_7hari": kecepatan_7hari,
         "lag_1": lag_1,
         "lag_2": lag_2,
         "lag_3": lag_3,
@@ -210,18 +217,21 @@ def prediksi_hafalan(siswa_id: int, surah_id: int) -> dict:
 
     # Susun fitur sesuai urutan training
     feature_values = {
-        "total_ayat_surah": surah_feat["total_ayat_surah"],
-        "rata_kata_per_ayat": surah_feat["rata_kata_per_ayat"],
-        "rata_huruf_per_ayat": surah_feat["rata_huruf_per_ayat"],
-        "hari_ke": siswa_feat["hari_ke"],
-        "ayat_sudah_dihafal": ayat_sudah,
-        "progress_persen": round(progress, 1),
-        "kecepatan_avg_sebelumnya": siswa_feat["kecepatan_avg_sebelumnya"],
-        "lag_1": siswa_feat["lag_1"],
-        "lag_2": siswa_feat["lag_2"],
-        "lag_3": siswa_feat["lag_3"],
-        "rolling_mean_3": siswa_feat["rolling_mean_3"],
-        "total_setoran_sebelumnya": siswa_feat["total_setoran_sebelumnya"],
+        "total_ayat_surah":        surah_feat["total_ayat_surah"],
+        "rata_kata_per_ayat":      surah_feat["rata_kata_per_ayat"],
+        "rata_huruf_per_ayat":     surah_feat["rata_huruf_per_ayat"],
+        "std_kata_per_ayat":       surah_feat["std_kata_per_ayat"],
+        "hari_ke":                 siswa_feat["hari_ke"],
+        "ayat_sudah_dihafal":      ayat_sudah,
+        "progress_persen":         round(progress, 1),
+        "kecepatan_avg_sebelumnya":siswa_feat["kecepatan_avg_sebelumnya"],
+        "std_kecepatan":           siswa_feat["std_kecepatan"],
+        "kecepatan_7hari":         siswa_feat["kecepatan_7hari"],
+        "lag_1":                   siswa_feat["lag_1"],
+        "lag_2":                   siswa_feat["lag_2"],
+        "lag_3":                   siswa_feat["lag_3"],
+        "rolling_mean_3":          siswa_feat["rolling_mean_3"],
+        "total_setoran_sebelumnya":siswa_feat["total_setoran_sebelumnya"],
     }
 
     # --- Model predict ---

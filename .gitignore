@@ -14,3 +14,24 @@ node_modules/
 *.db
 .vscode/
 .idea/
+
+# jurnal & dokumen (tidak perlu di-deploy)
+jurnal/
+*.docx
+*.xlsx
+*.pdf
+docs/
+gambar/
+scripts/
+data/
+saved_model/
+gen_*.py
+preview_*.py
+
+# claude worktrees
+.claude/
+
+# chart PNG besar (tidak dibutuhkan app)
+models/comparison_*.png
+models/flowchart_metodologi.png
+models/evaluasi_model.png
