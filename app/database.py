@@ -2,6 +2,7 @@ import pymysql
 import hashlib
 import pandas as pd
 import os
+import ssl
 from urllib.parse import urlparse
 
 # ============================
@@ -11,8 +12,8 @@ from urllib.parse import urlparse
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # Production: parse DATABASE_URL from Railway
-    # Railway format: mysql://root:password@host:port/railway
+    # Production: parse DATABASE_URL
+    # Format: mysql://user:password@host:port/database
     url = urlparse(DATABASE_URL)
     DB_CONFIG = {
         "host": url.hostname,
@@ -23,6 +24,10 @@ if DATABASE_URL:
         "cursorclass": pymysql.cursors.DictCursor,
         "autocommit": False,
     }
+    # TiDB Cloud (port 4000) wajib SSL
+    if url.port == 4000 or (url.hostname and "tidbcloud.com" in url.hostname):
+        ssl_ctx = ssl.create_default_context()
+        DB_CONFIG["ssl"] = ssl_ctx
 else:
     # Local development: XAMPP or individual env vars
     DB_CONFIG = {
