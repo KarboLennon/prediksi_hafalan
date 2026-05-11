@@ -1208,9 +1208,9 @@ def api_search_siswa(request: Request, q: str = ""):
     if len(q) < 2:
         return JSONResponse([])
 
-    # Multi-keyword: "andi saputra" → AND nama LIKE '%andi%' AND nama LIKE '%saputra%'
+    # Multi-keyword, case-insensitive (LOWER agar kompatibel TiDB utf8mb4_bin)
     keywords = q.split()
-    conditions = " AND ".join(["nama LIKE %s"] * len(keywords))
+    conditions = " AND ".join(["LOWER(nama) LIKE LOWER(%s)"] * len(keywords))
     params = [f"%{kw}%" for kw in keywords] + [10]
 
     results = db_fetchall(

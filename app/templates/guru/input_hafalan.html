@@ -788,7 +788,8 @@
                 fetchPrediksi();
             });
 
-            // ── Form submit validation ──
+            // ── Form submit validation + double-submit guard ──
+            let hafalanSubmitting = false;
             document.getElementById('formHafalan').addEventListener('submit', function (e) {
                 if (!siswaIdInput.value) {
                     e.preventDefault();
@@ -801,7 +802,13 @@
                 if (parseInt(ayatSelesai.value) < parseInt(ayatMulai.value)) {
                     e.preventDefault();
                     alert('Ayat selesai harus >= ayat mulai');
+                    return;
                 }
+                if (hafalanSubmitting) { e.preventDefault(); return; }
+                hafalanSubmitting = true;
+                const btn = this.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan…';
             });
 
             // ── Star Rating Helper ──
@@ -886,10 +893,23 @@
                 editModal.show();
             });
 
+            let editSubmitting = false;
             document.getElementById('formEdit').addEventListener('submit', function (e) {
                 const mulai = parseInt(document.getElementById('editAyatMulai').value);
                 const selesai = parseInt(document.getElementById('editAyatSelesai').value);
-                if (selesai < mulai) { e.preventDefault(); alert('Ayat selesai harus >= ayat mulai'); }
+                if (selesai < mulai) { e.preventDefault(); alert('Ayat selesai harus >= ayat mulai'); return; }
+                if (editSubmitting) { e.preventDefault(); return; }
+                editSubmitting = true;
+                const btn = this.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan…';
+            });
+            // Reset flag saat modal ditutup (biar bisa edit lagi)
+            document.getElementById('editModal').addEventListener('hidden.bs.modal', function () {
+                editSubmitting = false;
+                const btn = document.querySelector('#formEdit button[type="submit"]');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-floppy-disk"></i> Simpan Perubahan';
             });
         });
     </script>
