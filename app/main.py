@@ -204,26 +204,57 @@ def admin_dashboard(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    users = db_fetchall("SELECT * FROM users ORDER BY role, nama")
-    total_guru = db_fetchone("SELECT COUNT(*) AS c FROM users WHERE role='guru'")["c"]
-    total_siswa = db_fetchone("SELECT COUNT(*) AS c FROM users WHERE role='siswa'")["c"]
+    total_guru    = db_fetchone("SELECT COUNT(*) AS c FROM users WHERE role='guru'")["c"]
+    total_siswa   = db_fetchone("SELECT COUNT(*) AS c FROM users WHERE role='siswa'")["c"]
     total_hafalan = db_fetchone("SELECT COUNT(*) AS c FROM hafalan_log")["c"]
+
+    # Pagination + search
+    q        = request.query_params.get("q", "").strip()
+    page     = max(1, int(request.query_params.get("page", 1)))
+    per_page = int(request.query_params.get("per_page", 25))
+    if per_page not in (10, 25, 50, 100, 500):
+        per_page = 25
+    offset = (page - 1) * per_page
+
+    if q:
+        like = f"%{q}%"
+        total_users = db_fetchone(
+            "SELECT COUNT(*) AS c FROM users WHERE LOWER(nama) LIKE LOWER(%s) OR LOWER(email) LIKE LOWER(%s) OR nis LIKE %s OR nuptk LIKE %s",
+            (like, like, like, like)
+        )["c"]
+        users = db_fetchall(
+            "SELECT * FROM users WHERE LOWER(nama) LIKE LOWER(%s) OR LOWER(email) LIKE LOWER(%s) OR nis LIKE %s OR nuptk LIKE %s ORDER BY nama ASC LIMIT %s OFFSET %s",
+            (like, like, like, like, per_page, offset)
+        )
+    else:
+        total_users = db_fetchone("SELECT COUNT(*) AS c FROM users")["c"]
+        users = db_fetchall(
+            "SELECT * FROM users ORDER BY nama ASC LIMIT %s OFFSET %s",
+            (per_page, offset)
+        )
+
+    total_pages = max(1, (total_users + per_page - 1) // per_page)
 
     alert = None
     alert_type = request.query_params.get("alert")
-    alert_msg = request.query_params.get("msg")
+    alert_msg  = request.query_params.get("msg")
     if alert_type and alert_msg:
         alert = {"type": alert_type, "message": alert_msg}
 
     return templates.TemplateResponse("admin/dashboard.html", {
-        "request": request,
-        "user": user,
-        "users": users,
-        "total_guru": total_guru,
+        "request":     request,
+        "user":        user,
+        "users":       users,
+        "total_guru":  total_guru,
         "total_siswa": total_siswa,
         "total_hafalan": total_hafalan,
-        "alert": alert,
+        "alert":       alert,
         "active_page": "dashboard",
+        "q":           q,
+        "page":        page,
+        "per_page":    per_page,
+        "total_pages": total_pages,
+        "total_users": total_users,
     })
 
 

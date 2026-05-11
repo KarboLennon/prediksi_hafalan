@@ -103,10 +103,44 @@
     <div class="col-xl-7 col-lg-7">
         <div class="app-card">
             <div class="app-card-header dark">
-                <h2>Daftar Pengguna</h2>
-                <p>Kelola semua akun dalam sistem</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+                    <div>
+                        <h2>Daftar Pengguna</h2>
+                        <p>Kelola semua akun dalam sistem</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:.5rem;">
+                        <span style="color:rgba(255,255,255,.75); font-size:12px;">Tampilkan</span>
+                        <select id="perPageSelect" style="padding:.25rem .5rem; background:rgba(255,255,255,.12); color:var(--c-white); border:1px solid rgba(255,255,255,.3); border-radius:6px; font-size:13px; width:auto;">
+                            {% for opt in [10, 25, 50, 100, 500] %}
+                            <option value="{{ opt }}" {% if per_page==opt %}selected{% endif %}
+                                style="color:var(--c-primary); background:var(--c-white);">{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                        <span style="color:rgba(255,255,255,.75); font-size:12px;">/ <strong style="color:var(--c-white);">{{ total_users }}</strong></span>
+                    </div>
+                </div>
             </div>
+
+            <!-- Search -->
+            <div style="padding:.75rem 1rem; border-bottom:1px solid var(--c-border);">
+                <form method="GET" action="/admin" id="searchForm">
+                    <input type="hidden" name="per_page" value="{{ per_page }}">
+                    <input type="hidden" name="page" value="1">
+                    <div style="display:flex; gap:.5rem;">
+                        <input type="text" name="q" value="{{ q }}" class="form-control"
+                               placeholder="Cari nama, email, NIS, NUPTK…"
+                               style="font-size:13.5px;" autocomplete="off">
+                        {% if q %}
+                        <a href="/admin?per_page={{ per_page }}" class="btn-outline-app" style="padding:.45rem .875rem; font-size:13px; white-space:nowrap;">
+                            <i class="fas fa-xmark"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
             <div class="app-card-body p-none">
+                {% if users %}
                 <div class="table-responsive">
                     <table class="app-table">
                         <thead>
@@ -173,6 +207,40 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <div style="padding:.875rem 1rem; border-top:1px solid var(--c-border); background:var(--c-bg);">
+                    <nav>
+                        <ul class="pagination pagination-sm justify-content-center mb-1">
+                            <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                                <a class="page-link" href="?page={{ page-1 }}&per_page={{ per_page }}&q={{ q }}">&laquo; Prev</a>
+                            </li>
+                            {% for p in range(1, total_pages + 1) %}
+                                {% if p == page %}
+                                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                                {% elif p <= 2 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                                <li class="page-item"><a class="page-link" href="?page={{ p }}&per_page={{ per_page }}&q={{ q }}">{{ p }}</a></li>
+                                {% elif p == 3 and page > 4 or p == total_pages - 2 and page < total_pages - 3 %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                                <a class="page-link" href="?page={{ page+1 }}&per_page={{ per_page }}&q={{ q }}">Next &raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    <p class="text-muted text-center mb-0" style="font-size:12px;">Hal. {{ page }} / {{ total_pages }}</p>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fas fa-search"></i></div>
+                    <h2 style="color:var(--c-neutral);">Tidak ada hasil</h2>
+                    <p>Coba kata kunci lain</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -207,5 +275,25 @@ function toggleFields() {
 }
 roleSelect.addEventListener('change', toggleFields);
 toggleFields();
+
+// Per-page selector
+document.getElementById('perPageSelect').addEventListener('change', function () {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', this.value);
+    url.searchParams.set('page', '1');
+    window.location = url;
+});
+
+// Search — submit on Enter, debounce 400ms
+const searchInput = document.querySelector('input[name="q"]');
+if (searchInput) {
+    let searchTimer;
+    searchInput.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            document.getElementById('searchForm').submit();
+        }, 400);
+    });
+}
 </script>
 {% endblock %}
