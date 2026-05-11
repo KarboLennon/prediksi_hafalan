@@ -615,6 +615,7 @@
                         `<div class="ac-item" data-i="${i}">
                             <i class="fas fa-user" style="font-size:11px;color:var(--c-neutral);margin-right:.5rem;"></i>
                             ${highlight(r.nama, query)}
+                            ${r.nis ? `<span style="font-size:11px;color:var(--c-neutral);margin-left:.4rem;">· NIS ${r.nis}</span>` : ''}
                         </div>`
                     ).join('');
                     acDropdown.querySelectorAll('.ac-item').forEach(el => {

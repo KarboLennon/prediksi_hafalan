@@ -1214,10 +1214,10 @@ def api_search_siswa(request: Request, q: str = ""):
     params = [f"%{kw}%" for kw in keywords] + [10]
 
     results = db_fetchall(
-        f"SELECT id, nama FROM users WHERE role='siswa' AND {conditions} ORDER BY nama LIMIT %s",
+        f"SELECT id, nama, nis FROM users WHERE role='siswa' AND {conditions} ORDER BY nama LIMIT %s",
         params
     )
-    return JSONResponse([{"id": r["id"], "nama": r["nama"]} for r in results])
+    return JSONResponse([{"id": r["id"], "nama": r["nama"], "nis": r.get("nis") or ""} for r in results])
 
 
 # ============================
